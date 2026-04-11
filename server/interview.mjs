@@ -4,12 +4,9 @@
  * - POST /api/interview/start
  * - POST /api/interview/message
  * - POST /api/interview/questions
-<<<<<<< HEAD
  * - POST /api/interview/evaluate
-=======
  * - POST /api/interview/report
  * - POST /api/interview/submit
->>>>>>> origin/jayesh-mock-interview
  */
 import crypto from "crypto";
 import { callOpenRouter, safeJsonParse } from "./openrouter.mjs";
@@ -59,36 +56,15 @@ Rules:
 - Mix HR + technical based on role and topics.
 - One question per string, no numbering.`;
 
-<<<<<<< HEAD
-const GENERATE_MCQ_SYSTEM = `You generate multiple-choice interview questions.
+const GENERATE_MCQ_SYSTEM = `You generate MCQ interview questions.
 Return JSON ONLY in this exact shape:
-{"questions": [{"prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0}]}
+{"questions": [{"prompt": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0}]}
 Rules:
 - 5 to 10 questions.
-- 4 options per question, one correct and 3 plausible distractors.
-- correctIndex must be 0-3 and point to the correct option.
-- No option labels like A/B/C/D.
-- Keep prompts concise and role/topic relevant.`;
+- Each options array has exactly 4 items.
+- correctIndex is 0-3.
+- No extra text or markdown.`;
 
-const EVALUATE_SYSTEM = `You are an interview evaluator.
-Return JSON ONLY in this exact shape:
-{"evaluations":[{"score":0,"correctAnswer":"...","strengths":["..."],"missingPoints":["..."],"mistakes":["..."],"topic":"..."}]}
-Rules:
-- score must be integer 0-10.
-- correctAnswer must be concise and interview-ready (3-6 lines).
-- strengths, missingPoints, mistakes: 1-3 short bullet strings each.
-- Be strict but fair.
-- No markdown, no extra text.`;
-
-const EVALUATE_MCQ_SYSTEM = `You are an interview evaluator for multiple-choice questions.
-Return JSON ONLY in this exact shape:
-{"evaluations":[{"correctAnswer":"...","strengths":["..."],"missingPoints":["..."],"mistakes":["..."],"topic":"..."}]}
-Rules:
-- Do NOT include a score.
-- correctAnswer must be a short explanation (2-4 lines) of why the correct option is right.
-- strengths, missingPoints, mistakes: 1-2 short bullet strings each.
-- No markdown, no extra text.`;
-=======
 const EVAL_SYSTEM = `You are a professional interviewer evaluating candidate responses.
 Return JSON ONLY in this exact shape:
 {"technical_score": 0, "correctness": "Correct|Partially Correct|Incorrect", "remark": "...", "improvement": "..."}
@@ -96,6 +72,23 @@ Rules:
 - technical_score is 0-100.
 - remark is 1-2 short sentences.
 - improvement is 1 short actionable sentence.
+- No extra text or markdown.`;
+
+const EVALUATE_SYSTEM = `You are a professional interviewer evaluating multiple answers.
+Return JSON ONLY in this exact shape:
+{"evaluations": [{"score": 0, "topic": "...", "correctAnswer": "...", "strengths": ["..."], "missingPoints": ["..."], "mistakes": ["..."]}]}
+Rules:
+- score is 0-10.
+- Keep bullets short and actionable.
+- Provide one evaluation per question in order.
+- No extra text or markdown.`;
+
+const EVALUATE_MCQ_SYSTEM = `You are a professional interviewer evaluating MCQs.
+Return JSON ONLY in this exact shape:
+{"evaluations": [{"topic": "...", "correctAnswer": "...", "strengths": ["..."], "missingPoints": ["..."], "mistakes": ["..."]}]}
+Rules:
+- Provide one evaluation per question in order.
+- Keep bullets short and actionable.
 - No extra text or markdown.`;
 
 const REPORT_SYSTEM = `You are an AI interview coach generating final performance report.
@@ -124,7 +117,6 @@ Rules:
 - Summary is 1-2 sentences.
 - Arrays contain short bullets.
 - No extra text or markdown.`;
->>>>>>> origin/jayesh-mock-interview
 
 function buildNextQuestionPrompt(session, lastAnswer) {
   const topics = session.topics.length ? session.topics.join(", ") : "Not specified";
@@ -256,12 +248,7 @@ Generate ${count} interview questions now.`;
   const { content, error } = await callOpenRouter({
     system: mode === "mcq" ? GENERATE_MCQ_SYSTEM : GENERATE_Q_SYSTEM,
     messages: [{ role: "user", content: userPrompt }],
-<<<<<<< HEAD
     max_tokens: mode === "mcq" ? 900 : 450,
-=======
-    model: "google/gemini-2.0-flash-001",
-    max_tokens: 450,
->>>>>>> origin/jayesh-mock-interview
     temperature: 0.3,
   });
 
@@ -334,11 +321,7 @@ Generate ${count} interview questions now.`;
   return { statusCode: 200, body: JSON.stringify({ questions: parsed.questions.slice(0, count) }) };
 }
 
-<<<<<<< HEAD
-export async function handleInterviewEvaluate(body) {
-=======
 export async function handleInterviewReport(body) {
->>>>>>> origin/jayesh-mock-interview
   let payload;
   try {
     payload = JSON.parse(body || "{}");
@@ -346,118 +329,16 @@ export async function handleInterviewReport(body) {
     return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
   }
 
-<<<<<<< HEAD
-  const role = String(payload.role || "");
-  const company = String(payload.company || "");
-  const topics = toList(payload.topics);
-  const questions = Array.isArray(payload.questions) ? payload.questions.map((q) => String(q || "")) : [];
-  const answers = Array.isArray(payload.answers) ? payload.answers.map((a) => String(a || "")) : [];
-  const mode = String(payload.mode || "theory").toLowerCase();
-  const correctOptions = Array.isArray(payload.correctOptions)
-    ? payload.correctOptions.map((c) => String(c || ""))
-    : [];
-  const userId = payload.userId || "anonymous";
-
-  if (!questions.length) {
-    return { statusCode: 200, body: JSON.stringify({ evaluations: [] }) };
-  }
-
-  if (mode === "mcq" && correctOptions.length) {
-    const qaBlock = questions
-      .map((question, index) => {
-        const answer = answers[index] || "";
-        const correctAnswer = correctOptions[index] || "";
-        const topic = topics.length ? topics[index % topics.length] : "General";
-        return `Q${index + 1} [${topic}]: ${question}\nSelected: ${answer || "(no answer)"}\nCorrect: ${correctAnswer}`;
-      })
-      .join("\n\n");
-
-    const userPrompt = `Role: ${role || "Not specified"}
-Company: ${company || "Not specified"}
-Topics: ${topics.join(", ") || "Not specified"}
-
-Evaluate these MCQs:\n\n${qaBlock}
-
-Return one evaluation per question in the same order.`;
-
-    const { content, error } = await callOpenRouter({
-      system: EVALUATE_MCQ_SYSTEM,
-      messages: [{ role: "user", content: userPrompt }],
-      max_tokens: 1200,
-      temperature: 0.2,
-    });
-
-    const parsed = content && !error ? safeJsonParse(content) : null;
-    const aiEvaluations = Array.isArray(parsed?.evaluations) ? parsed.evaluations : [];
-
-    const evaluations = questions.map((question, index) => {
-      const answer = (answers[index] || "").trim();
-      const correctAnswer = correctOptions[index] || "";
-      const score = answer && correctAnswer && answer === correctAnswer ? 10 : 0;
-      const topic = topics.length ? topics[index % topics.length] : "General";
-      const ai = aiEvaluations[index] || {};
-      return {
-        score,
-        topic: String(ai.topic || topic),
-        correctAnswer: String(ai.correctAnswer || correctAnswer),
-        strengths: Array.isArray(ai.strengths) ? ai.strengths.map((v) => String(v)).slice(0, 2) : score ? ["Selected the correct option"] : [],
-        missingPoints: Array.isArray(ai.missingPoints)
-          ? ai.missingPoints.map((v) => String(v)).slice(0, 2)
-          : score
-          ? []
-          : ["Review the concept and eliminate distractors"],
-        mistakes: Array.isArray(ai.mistakes)
-          ? ai.mistakes.map((v) => String(v)).slice(0, 2)
-          : score
-          ? []
-          : ["Selected an incorrect option"],
-      };
-    });
-    const totalScore = evaluations.reduce((sum, ev) => sum + (Number(ev.score) || 0), 0);
-    const maxScore = evaluations.length * 10;
-    if (maxScore > 0) {
-      const percent = Math.round((totalScore / maxScore) * 100);
-      recordInterviewScore({
-        userId,
-        score: percent,
-        type: `assessment_${mode}`,
-        company,
-      });
-    }
-    return { statusCode: 200, body: JSON.stringify({ evaluations }) };
-  }
-
-  const qaBlock = questions
-    .map((question, index) => {
-      const answer = answers[index] || "";
-      const topic = topics.length ? topics[index % topics.length] : "General";
-      return `Q${index + 1} [${topic}]: ${question}\nA${index + 1}: ${answer || "(no answer)"}`;
-    })
-    .join("\n\n");
-
-  const userPrompt = `Role: ${role || "Not specified"}
-Company: ${company || "Not specified"}
-Topics: ${topics.join(", ") || "Not specified"}
-
-Evaluate these answers:\n\n${qaBlock}
-
-Return one evaluation per question in the same order.`;
-
-  const { content, error } = await callOpenRouter({
-    system: EVALUATE_SYSTEM,
-    messages: [{ role: "user", content: userPrompt }],
-    max_tokens: 1800,
-=======
   const results = payload.results;
   if (!Array.isArray(results) || results.length === 0) {
     return { statusCode: 200, body: JSON.stringify({ error: "Missing results" }) };
   }
 
-  const userPrompt = `Based on following interview results generate summary report: ${JSON.stringify(results)}`;
+  const reportPrompt = `Based on following interview results generate summary report: ${JSON.stringify(results)}`;
 
   const { content, error } = await callOpenRouter({
     system: REPORT_SYSTEM,
-    messages: [{ role: "user", content: userPrompt }],
+    messages: [{ role: "user", content: reportPrompt }],
     model: "google/gemini-2.0-flash-001",
     max_tokens: 300,
     temperature: 0.3,
@@ -573,61 +454,145 @@ export async function handleInterviewEvaluation(body) {
     return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
   }
 
-  const question = String(payload.question || "");
-  const transcript = String(payload.transcript || "");
-  if (!question || !transcript) {
-    return { statusCode: 200, body: JSON.stringify({ error: "Missing question or transcript" }) };
-  }
+  const role = String(payload.role || "");
+  const company = String(payload.company || "");
+  const topics = toList(payload.topics);
+  const questions = Array.isArray(payload.questions) ? payload.questions.map((q) => String(q || "")) : [];
+  const answers = Array.isArray(payload.answers) ? payload.answers.map((a) => String(a || "")) : [];
+  const mode = String(payload.mode || "theory").toLowerCase();
+  const correctOptions = Array.isArray(payload.correctOptions)
+    ? payload.correctOptions.map((c) => String(c || ""))
+    : [];
+  const userId = payload.userId || "anonymous";
 
-  const userPrompt = `Question: ${question}\nCandidate Answer: ${transcript}\nEvaluate correctness and provide score.`;
-
-  const { content, error } = await callOpenRouter({
-    system: EVAL_SYSTEM,
-    messages: [{ role: "user", content: userPrompt }],
-    max_tokens: 250,
->>>>>>> origin/jayesh-mock-interview
-    temperature: 0.2,
-  });
-
-  if (error || !content) {
-<<<<<<< HEAD
-    const fallback = questions.map((question, index) => {
-      const answer = (answers[index] || "").trim();
-      const score = !answer ? 0 : Math.min(10, Math.max(2, Math.floor(answer.split(/\s+/).length / 6)));
-      const topic = topics.length ? topics[index % topics.length] : "General";
-      return {
-        score,
-        topic,
-        correctAnswer: `A strong answer should clearly define the concept in context, include one practical example, mention trade-offs, and end with impact for the ${role || "target"} role.`,
-        strengths: answer ? ["Attempted a response", "Included relevant context"] : ["No attempt provided"],
-        missingPoints: ["Add structure: situation, approach, result", "Include specific technical depth"],
-        mistakes: answer ? ["Answer is too generic", "Missing measurable impact"] : ["Question left unanswered"],
-      };
-    });
-    return { statusCode: 200, body: JSON.stringify({ evaluations: fallback }) };
-  }
-
-  const parsed = safeJsonParse(content);
-  if (!parsed || !Array.isArray(parsed.evaluations)) {
+  if (!questions.length) {
     return { statusCode: 200, body: JSON.stringify({ evaluations: [] }) };
   }
 
-  const normalized = questions.map((_, index) => {
-    const raw = parsed.evaluations[index] || {};
+  if (mode === "mcq" && correctOptions.length) {
+    const qaBlock = questions
+      .map((question, index) => {
+        const answer = answers[index] || "";
+        const correctAnswer = correctOptions[index] || "";
+        const topic = topics.length ? topics[index % topics.length] : "General";
+        return `Q${index + 1} [${topic}]: ${question}\nSelected: ${answer || "(no answer)"}\nCorrect: ${correctAnswer}`;
+      })
+      .join("\n\n");
+
+    const userPrompt = `Role: ${role || "Not specified"}
+Company: ${company || "Not specified"}
+Topics: ${topics.join(", ") || "Not specified"}
+
+Evaluate these MCQs:\n\n${qaBlock}
+
+Return one evaluation per question in the same order.`;
+
+    const { content, error } = await callOpenRouter({
+      system: EVALUATE_MCQ_SYSTEM,
+      messages: [{ role: "user", content: userPrompt }],
+      max_tokens: 1200,
+      temperature: 0.2,
+    });
+
+    const parsed = content && !error ? safeJsonParse(content) : null;
+    const aiEvaluations = Array.isArray(parsed?.evaluations) ? parsed.evaluations : [];
+
+    const evaluations = questions.map((question, index) => {
+      const answer = (answers[index] || "").trim();
+      const correctAnswer = correctOptions[index] || "";
+      const score = answer && correctAnswer && answer === correctAnswer ? 10 : 0;
+      const topic = topics.length ? topics[index % topics.length] : "General";
+      const ai = aiEvaluations[index] || {};
+      return {
+        score,
+        topic: String(ai.topic || topic),
+        correctAnswer: String(ai.correctAnswer || correctAnswer),
+        strengths: Array.isArray(ai.strengths)
+          ? ai.strengths.map((v) => String(v)).slice(0, 2)
+          : score
+          ? ["Selected the correct option"]
+          : [],
+        missingPoints: Array.isArray(ai.missingPoints)
+          ? ai.missingPoints.map((v) => String(v)).slice(0, 2)
+          : score
+          ? []
+          : ["Review the concept and eliminate distractors"],
+        mistakes: Array.isArray(ai.mistakes)
+          ? ai.mistakes.map((v) => String(v)).slice(0, 2)
+          : score
+          ? []
+          : ["Selected an incorrect option"],
+      };
+    });
+    const totalScore = evaluations.reduce((sum, ev) => sum + (Number(ev.score) || 0), 0);
+    const maxScore = evaluations.length * 10;
+    if (maxScore > 0) {
+      const percent = Math.round((totalScore / maxScore) * 100);
+      recordInterviewScore({
+        userId,
+        score: percent,
+        type: `assessment_${mode}`,
+        company,
+      });
+    }
+    return { statusCode: 200, body: JSON.stringify({ evaluations }) };
+  }
+
+  const qaBlock = questions
+    .map((question, index) => {
+      const answer = answers[index] || "";
+      const topic = topics.length ? topics[index % topics.length] : "General";
+      return `Q${index + 1} [${topic}]: ${question}\nA${index + 1}: ${answer || "(no answer)"}`;
+    })
+    .join("\n\n");
+
+  const userPrompt = `Role: ${role || "Not specified"}
+Company: ${company || "Not specified"}
+Topics: ${topics.join(", ") || "Not specified"}
+
+Evaluate these answers:\n\n${qaBlock}
+
+Return one evaluation per question in the same order.`;
+
+  const { content, error } = await callOpenRouter({
+    system: EVALUATE_SYSTEM,
+    messages: [{ role: "user", content: userPrompt }],
+    max_tokens: 1800,
+  });
+
+  const parsed = content && !error ? safeJsonParse(content) : null;
+  const aiEvaluations = Array.isArray(parsed?.evaluations) ? parsed.evaluations : [];
+
+  const evaluations = questions.map((question, index) => {
+    const answer = (answers[index] || "").trim();
     const topic = topics.length ? topics[index % topics.length] : "General";
-    const numericScore = Number(raw.score);
+    const ai = aiEvaluations[index] || {};
+    const rawScore = Number(ai.score);
+    const computedScore = !answer
+      ? 0
+      : Math.min(10, Math.max(2, Math.floor(answer.split(/\s+/).length / 6)));
     return {
-      score: Number.isFinite(numericScore) ? Math.min(10, Math.max(0, Math.round(numericScore))) : 0,
-      topic: String(raw.topic || topic),
-      correctAnswer: String(raw.correctAnswer || ""),
-      strengths: Array.isArray(raw.strengths) ? raw.strengths.map((v) => String(v)).slice(0, 3) : [],
-      missingPoints: Array.isArray(raw.missingPoints) ? raw.missingPoints.map((v) => String(v)).slice(0, 3) : [],
-      mistakes: Array.isArray(raw.mistakes) ? raw.mistakes.map((v) => String(v)).slice(0, 3) : [],
+      score: Number.isFinite(rawScore) ? Math.min(10, Math.max(0, Math.round(rawScore))) : computedScore,
+      topic: String(ai.topic || topic),
+      correctAnswer: String(ai.correctAnswer || ""),
+      strengths: Array.isArray(ai.strengths)
+        ? ai.strengths.map((v) => String(v)).slice(0, 3)
+        : answer
+        ? ["Attempted a response", "Included relevant context"]
+        : ["No attempt provided"],
+      missingPoints: Array.isArray(ai.missingPoints)
+        ? ai.missingPoints.map((v) => String(v)).slice(0, 3)
+        : ["Add structure: situation, approach, result", "Include specific technical depth"],
+      mistakes: Array.isArray(ai.mistakes)
+        ? ai.mistakes.map((v) => String(v)).slice(0, 3)
+        : answer
+        ? ["Answer is too generic", "Missing measurable impact"]
+        : ["Question left unanswered"],
     };
   });
 
-  const totalScore = normalized.reduce((sum, ev) => sum + (Number(ev.score) || 0), 0);
-  const maxScore = normalized.length * 10;
+  const totalScore = evaluations.reduce((sum, ev) => sum + (Number(ev.score) || 0), 0);
+  const maxScore = evaluations.length * 10;
   if (maxScore > 0) {
     const percent = Math.round((totalScore / maxScore) * 100);
     recordInterviewScore({
@@ -638,31 +603,5 @@ export async function handleInterviewEvaluation(body) {
     });
   }
 
-  return { statusCode: 200, body: JSON.stringify({ evaluations: normalized }) };
-=======
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        technical_score: 0,
-        correctness: "",
-        remark: "OpenRouter evaluation unavailable.",
-        improvement: "",
-        raw: error || "",
-      }),
-    };
-  }
-
-  const parsed = safeJsonParse(content) || {};
-  const technicalScore = Number(parsed.technical_score);
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      technical_score: Number.isFinite(technicalScore) ? Math.min(100, Math.max(0, technicalScore)) : 0,
-      correctness: String(parsed.correctness || ""),
-      remark: String(parsed.remark || ""),
-      improvement: String(parsed.improvement || ""),
-      raw: content,
-    }),
-  };
->>>>>>> origin/jayesh-mock-interview
+  return { statusCode: 200, body: JSON.stringify({ evaluations }) };
 }
