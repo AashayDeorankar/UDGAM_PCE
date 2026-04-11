@@ -14,6 +14,7 @@ import Mentors from "./pages/Mentors";
 import NoteViewPage from "./pages/NoteViewPage";
 import InterviewPrep from "./pages/InterviewPrep";
 import MockInterview from "./pages/MockInterview.tsx";
+import Dashboard from "./pages/Dashboard";
 import InterviewPrepQuestions from "./pages/InterviewPrepQuestions";
 import DsaPracticePage from "./pages/DsaPracticePage";
 import SqlPracticePage from "./pages/SqlPracticePage";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/view" element={<ProtectedRoute><NoteViewPage /></ProtectedRoute>} />
             <Route path="/interview-prep" element={<ProtectedRoute><InterviewPrep /></ProtectedRoute>} />
             <Route path="/mock-interview" element={<ProtectedRoute><MockInterview /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistantPage /></ProtectedRoute>} />
             <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
             <Route path="/connect" element={<ProtectedRoute><AlumniConnect /></ProtectedRoute>} />

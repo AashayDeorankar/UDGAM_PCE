@@ -16,7 +16,10 @@ import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/contexts/AuthContext";
 import { VoiceRecorder, type SpeechRecognitionState, EMPTY_SPEECH_STATE } from "@/components/interview/VoiceRecorder";
 import { InterviewStats } from "@/components/interview/InterviewStats";
+import { FaceCamera } from "@/components/interview/FaceCamera";
 import { addInterviewReport, loadInterviewReports, type InterviewReportRecord } from "@/lib/interview-reports";
+import { summarizeEmotionSamples, type EmotionSummary } from "@/lib/emotion/EmotionTracker";
+import type { EmotionSample } from "@/lib/emotion/EmotionAnalyzer";
 
 function scrollToTop() {
   window.scrollTo(0, 0);
@@ -65,12 +68,15 @@ export default function MockInterview() {
     summary: string;
     raw: string;
     parsed: string;
+    emotionReport: string[];
   } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [reportHistory, setReportHistory] = useState<InterviewReportRecord[]>([]);
   const [reportSaving, setReportSaving] = useState(false);
   const lastSavedReportRef = useRef<string | null>(null);
   const lastQuestionAtRef = useRef<number | null>(null);
+  const emotionSamplesRef = useRef<EmotionSample[]>([]);
+  const [emotionSummary, setEmotionSummary] = useState<EmotionSummary>({ averages: {}, distribution: {}, timeline: [] });
   const [analytics, setAnalytics] = useState<{ averageScore: number; recentScores: number[]; readiness: string; totalAttempts: number } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
@@ -117,6 +123,8 @@ export default function MockInterview() {
       setReportHistory([]);
       setReportSaving(false);
       lastSavedReportRef.current = null;
+      emotionSamplesRef.current = [];
+      setEmotionSummary({ averages: {}, distribution: {}, timeline: [] });
     }
   }, [mockOpen]);
 
@@ -131,6 +139,7 @@ export default function MockInterview() {
     if (lastSavedReportRef.current === signature) return;
     lastSavedReportRef.current = signature;
     setReportSaving(true);
+    const totalDurationMs = interviewData.reduce((acc, item) => acc + (item.duration || 0), 0);
     addInterviewReport({
       userId: user.uid,
       role: roleInput,
@@ -145,6 +154,11 @@ export default function MockInterview() {
       strengths: finalReport.strengths,
       weaknesses: finalReport.weaknesses,
       suggestions: finalReport.suggestions,
+      durationMs: totalDurationMs,
+      emotionAverages: emotionSummary.averages,
+      emotionDistribution: emotionSummary.distribution,
+      emotionTimeline: emotionSummary.timeline,
+      emotionReport: finalReport.emotionReport,
     }).then(() => loadInterviewReports(user.uid, 10).then(setReportHistory))
       .finally(() => setReportSaving(false));
   }, [finalReport, submitted, reportSaving, user?.uid, roleInput, company, topicsInput]);
@@ -217,6 +231,12 @@ export default function MockInterview() {
       .map((msg) => `${msg.role === "assistant" ? "Interviewer" : "Candidate"}: ${msg.content}`)
       .join("\n");
 
+  const handleEmotionSample = (sample: EmotionSample) => {
+    const samples = [...emotionSamplesRef.current, sample].slice(-360);
+    emotionSamplesRef.current = samples;
+    setEmotionSummary(summarizeEmotionSamples(samples));
+  };
+
   const sendMockMessage = async () => {
     const typed = mockInput.trim();
     const spoken = speechState.finalTranscript.trim();
@@ -274,6 +294,7 @@ export default function MockInterview() {
     const payloadData = interviewData.length ? interviewData : buildInterviewDataFromMessages();
     if (payloadData.length === 0) return;
     const chatTranscript = buildChatTranscript();
+    const emotionPayload = emotionSummary;
     setSubmitLoading(true);
     setSubmitStep("Analyzing Interview...");
     setSubmitted(true);
@@ -282,7 +303,11 @@ export default function MockInterview() {
       const res = await fetch(`${getApiBase()}/api/interview/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interview_data: payloadData, chat_transcript: chatTranscript }),
+        body: JSON.stringify({
+          interview_data: payloadData,
+          chat_transcript: chatTranscript,
+          emotion_analytics: emotionPayload,
+        }),
       });
       setSubmitStep("Checking Technical Answers...");
       const data = await res.json().catch(() => null);
@@ -310,6 +335,7 @@ export default function MockInterview() {
             suggestions: data.suggestions,
             summary: data.summary,
           }),
+          emotionReport: Array.isArray(data.emotion_report) ? data.emotion_report : [],
         });
       }
     } catch {
@@ -325,6 +351,7 @@ export default function MockInterview() {
         summary: "OpenRouter evaluation failed.",
         raw: "",
         parsed: "",
+        emotionReport: [],
       });
     } finally {
       setSubmitLoading(false);
@@ -599,6 +626,7 @@ export default function MockInterview() {
             </Button>
           </div>
           <div className="space-y-3">
+            <FaceCamera active={mockOpen && !submitted} onSample={handleEmotionSample} />
             <VoiceRecorder onStateChange={setSpeechState} active={mockOpen && !submitted} />
             {finalReport && (
               <InterviewStats

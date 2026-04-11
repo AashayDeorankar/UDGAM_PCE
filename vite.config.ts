@@ -271,6 +271,46 @@ function devApiPlugin() {
           return;
         }
 
+        // POST /api/dashboard/summary – performance summary
+        if (req.method === "POST" && pathname === "/api/dashboard/summary") {
+          const chunks = [];
+          req.on("data", (chunk) => chunks.push(chunk));
+          req.on("error", () => {
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Request body error" }));
+            }
+          });
+          req.on("end", () => {
+            let body = "";
+            try {
+              body = Buffer.concat(chunks).toString("utf8") || "{}";
+            } catch {
+              body = "{}";
+            }
+            (async () => {
+              try {
+                const { handleDashboardSummary } = await import("./server/interview.mjs");
+                const out = await handleDashboardSummary(body);
+                if (!res.headersSent) {
+                  res.statusCode = out.statusCode;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(out.body);
+                }
+              } catch (e) {
+                console.error("[api/dashboard/summary]", e);
+                if (!res.headersSent) {
+                  res.statusCode = 500;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ error: "Dashboard summary failed." }));
+                }
+              }
+            })();
+          });
+          return;
+        }
+
         next();
       };
       // Run after other middlewares so we can prepend and run before proxy

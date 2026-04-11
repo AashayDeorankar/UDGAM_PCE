@@ -1,0 +1,665 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  RadialBar,
+  RadialBarChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { useAuth } from "@/contexts/AuthContext";
+import { getApiBase } from "@/lib/api-base";
+import { loadInterviewReports, type InterviewReportRecord } from "@/lib/interview-reports";
+
+const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
+function formatDate(value?: { toDate: () => Date } | null) {
+  if (!value?.toDate) return "";
+  return value.toDate().toLocaleDateString();
+}
+
+function inferInterviewType(topics: string) {
+  const t = topics.toLowerCase();
+  if (t.includes("system")) return "System Design";
+  if (t.includes("dsa") || t.includes("algo") || t.includes("data structure") || t.includes("sql") || t.includes("tech")) {
+    return "Technical";
+  }
+  if (t.includes("behavior") || t.includes("hr") || t.includes("communication")) return "Behavioral";
+  return "HR";
+}
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const [reports, setReports] = useState<InterviewReportRecord[]>([]);
+  const [summary, setSummary] = useState<{ summary: string; strengths: string[]; weaknesses: string[]; suggestions: string[] } | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const lastSummaryRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    loadInterviewReports(user.uid, 50).then(setReports);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (reports.length === 0) return;
+    const signature = `${reports.length}-${reports[0]?.id}`;
+    if (lastSummaryRef.current === signature) return;
+    lastSummaryRef.current = signature;
+    setSummaryLoading(true);
+    fetch(`${getApiBase()}/api/dashboard/summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reports: reports.map((report) => ({
+          overall: report.overall,
+          confidence: report.confidence,
+          fluency: report.fluency,
+          communication: report.communication,
+          technical: report.technical,
+          summary: report.summary,
+          strengths: report.strengths,
+          weaknesses: report.weaknesses,
+          suggestions: report.suggestions,
+        })),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data || data.error) return;
+        setSummary({
+          summary: String(data.summary || ""),
+          strengths: Array.isArray(data.strengths) ? data.strengths : [],
+          weaknesses: Array.isArray(data.weaknesses) ? data.weaknesses : [],
+          suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+        });
+      })
+      .catch(() => {
+        setSummary(null);
+      })
+      .finally(() => setSummaryLoading(false));
+  }, [reports]);
+
+  const metrics = useMemo(() => {
+    if (reports.length === 0) {
+      return {
+        total: 0,
+        average: 0,
+        confidence: 0,
+        communication: 0,
+        technical: 0,
+        fluency: 0,
+        lastDate: "",
+      };
+    }
+    const total = reports.length;
+    const average = reports.reduce((acc, r) => acc + r.overall, 0) / total;
+    const confidence = reports.reduce((acc, r) => acc + r.confidence, 0) / total;
+    const communication = reports.reduce((acc, r) => acc + r.communication, 0) / total;
+    const technical = reports.reduce((acc, r) => acc + r.technical, 0) / total;
+    const fluency = reports.reduce((acc, r) => acc + r.fluency, 0) / total;
+    return {
+      total,
+      average: clamp(average),
+      confidence: clamp(confidence),
+      communication: clamp(communication),
+      technical: clamp(technical),
+      fluency: clamp(fluency),
+      lastDate: formatDate(reports[0]?.createdAt ?? null),
+    };
+  }, [reports]);
+
+  const radarData = useMemo(() => {
+    if (reports.length === 0) return [];
+    return [
+      { metric: "Communication", score: metrics.communication },
+      { metric: "Confidence", score: metrics.confidence },
+      { metric: "Technical Knowledge", score: metrics.technical },
+      { metric: "Problem Solving", score: clamp((metrics.technical + metrics.confidence) / 2) },
+      { metric: "Clarity", score: clamp((metrics.communication + metrics.fluency) / 2) },
+      { metric: "Time Management", score: clamp((metrics.fluency + metrics.confidence) / 2) },
+    ];
+  }, [reports, metrics]);
+
+  const radialData = useMemo(() => {
+    if (reports.length === 0) return [];
+    return [
+      { name: "Voice Clarity", value: metrics.communication, fill: "hsl(140 70% 45%)" },
+      { name: "Speaking Speed", value: metrics.fluency, fill: "hsl(32 85% 55%)" },
+      { name: "Confidence", value: metrics.confidence, fill: "hsl(210 85% 55%)" },
+      { name: "Filler Words", value: clamp(100 - metrics.confidence), fill: "hsl(0 70% 55%)" },
+    ];
+  }, [reports, metrics]);
+
+  const lineData = useMemo(() => {
+    if (reports.length === 0) return [];
+    const sorted = [...reports].sort((a, b) => {
+      const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+      const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+      return aTime - bTime;
+    });
+    return sorted.map((report) => ({
+      label: formatDate(report.createdAt ?? null),
+      overall: report.overall,
+      confidence: report.confidence,
+      communication: report.communication,
+      technical: report.technical,
+    }));
+  }, [reports]);
+
+  const pieData = useMemo(() => {
+    if (reports.length === 0) return [];
+    const counts: Record<string, number> = { Technical: 0, Behavioral: 0, HR: 0, "System Design": 0 };
+    reports.forEach((report) => {
+      const type = inferInterviewType(report.topics || "");
+      counts[type] = (counts[type] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .filter(([, value]) => value > 0)
+      .map(([name, value], index) => ({
+        name,
+        value,
+        fill: ["hsl(210 85% 55%)", "hsl(32 85% 55%)", "hsl(140 70% 45%)", "hsl(0 70% 55%)"][index % 4],
+      }));
+  }, [reports]);
+
+  const strengthData = useMemo(() => {
+    if (reports.length === 0) return [];
+    const items = [
+      { metric: "Communication", score: metrics.communication },
+      { metric: "Technical", score: metrics.technical },
+      { metric: "Confidence", score: metrics.confidence },
+      { metric: "Problem Solving", score: clamp((metrics.technical + metrics.confidence) / 2) },
+    ];
+    return items.map((item) => ({
+      metric: item.metric,
+      score: item.score,
+      gap: clamp(100 - item.score),
+    }));
+  }, [reports, metrics]);
+
+  const emotionAggregates = useMemo(() => {
+    const filtered = reports.filter((report) => report.emotionAverages && Object.keys(report.emotionAverages).length);
+    if (filtered.length === 0) {
+      return {
+        averages: {},
+        distribution: {},
+        timeline: [],
+      };
+    }
+
+    const sums: Record<string, number> = {};
+    const distribution: Record<string, number> = {};
+    filtered.forEach((report) => {
+      Object.entries(report.emotionAverages || {}).forEach(([key, value]) => {
+        sums[key] = (sums[key] || 0) + Number(value || 0);
+      });
+      Object.entries(report.emotionDistribution || {}).forEach(([key, value]) => {
+        distribution[key] = (distribution[key] || 0) + Number(value || 0);
+      });
+    });
+
+    const count = filtered.length;
+    const averages = Object.fromEntries(
+      Object.entries(sums).map(([key, value]) => [key, clamp(value / count)])
+    );
+
+    const timeline = filtered[0]?.emotionTimeline || [];
+
+    return { averages, distribution, timeline };
+  }, [reports]);
+
+  const emotionRadar = useMemo(() => {
+    if (!Object.keys(emotionAggregates.averages).length) return [];
+    const averages = emotionAggregates.averages;
+    return [
+      { metric: "Confidence", score: averages.confidence ?? 0 },
+      { metric: "Eye Contact", score: averages.eyeContact ?? 0 },
+      { metric: "Engagement", score: averages.engagement ?? 0 },
+      { metric: "Stress Control", score: clamp(100 - (averages.stress ?? 0)) },
+      { metric: "Attention", score: averages.attention ?? 0 },
+      { metric: "Facial Expression", score: averages.smile ?? 0 },
+    ];
+  }, [emotionAggregates]);
+
+  const emotionLine = useMemo(() => {
+    if (!emotionAggregates.timeline.length) return [];
+    return emotionAggregates.timeline.map((item) => ({
+      label: new Date(item.t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      confidence: clamp(item.confidence),
+      stress: clamp(item.stress),
+      engagement: clamp(item.engagement),
+    }));
+  }, [emotionAggregates]);
+
+  const emotionPie = useMemo(() => {
+    const entries = Object.entries(emotionAggregates.distribution || {}).filter(([, value]) => value > 0);
+    return entries.map(([name, value], index) => ({
+      name,
+      value,
+      fill: ["hsl(210 85% 55%)", "hsl(0 70% 55%)", "hsl(140 70% 45%)", "hsl(32 85% 55%)", "hsl(260 70% 60%)"][index % 5],
+    }));
+  }, [emotionAggregates]);
+
+  const emotionRadial = useMemo(() => {
+    const averages = emotionAggregates.averages;
+    if (!Object.keys(averages).length) return [];
+    return [
+      { name: "Eye Contact", value: averages.eyeContact ?? 0, fill: "hsl(210 85% 55%)" },
+      { name: "Confidence", value: averages.confidence ?? 0, fill: "hsl(140 70% 45%)" },
+      { name: "Smile", value: averages.smile ?? 0, fill: "hsl(32 85% 55%)" },
+      { name: "Attention", value: averages.attention ?? 0, fill: "hsl(260 70% 60%)" },
+    ];
+  }, [emotionAggregates]);
+
+  const latestReport = reports[0];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="pt-24 pb-16 bg-secondary/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-dots opacity-40" />
+        <div className="container relative">
+          <motion.div
+            className="mb-10"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">AI Mock Interview Dashboard</p>
+            <h1 className="text-3xl md:text-4xl font-semibold mt-3 text-foreground">Performance dashboard</h1>
+            <p className="text-muted-foreground mt-2 max-w-2xl">
+              Track mock interview performance, speech analytics, and AI coaching insights based on your latest sessions.
+            </p>
+          </motion.div>
+
+          <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6 mb-10">
+            {[
+              { label: "Total Interviews", value: metrics.total.toString() },
+              { label: "Average Score", value: `${metrics.average}%` },
+              { label: "Confidence Score", value: `${metrics.confidence}%` },
+              { label: "Communication Score", value: `${metrics.communication}%` },
+              { label: "Technical Score", value: `${metrics.technical}%` },
+              { label: "Last Interview Date", value: metrics.lastDate || "" },
+            ].map((card) => (
+              <div key={card.label} className="rounded-2xl border-2 border-border bg-card p-4 shadow-sm">
+                <p className="text-xs text-muted-foreground">{card.label}</p>
+                <p className="text-lg font-semibold mt-2 text-foreground">{card.value || "-"}</p>
+              </div>
+            ))}
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Overall Performance</h2>
+                <span className="text-xs text-muted-foreground">Radar Chart</span>
+              </div>
+              {radarData.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-6">Complete interviews to unlock performance analytics.</p>
+              ) : (
+                <ChartContainer
+                  config={{ score: { label: "Score", color: "hsl(210 85% 55%)" } }}
+                  className="h-64 mt-4"
+                >
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="metric" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <Radar dataKey="score" fill="var(--color-score)" fillOpacity={0.45} stroke="var(--color-score)" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </RadarChart>
+                </ChartContainer>
+              )}
+            </div>
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Speech Analytics</h2>
+                <span className="text-xs text-muted-foreground">Radial Bar Chart</span>
+              </div>
+              {radialData.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-6">Speech analytics appear after submissions.</p>
+              ) : (
+                <ChartContainer
+                  config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }}
+                  className="h-64 mt-4"
+                >
+                  <RadialBarChart innerRadius={40} outerRadius={120} data={radialData} startAngle={90} endAngle={-270}>
+                    <PolarGrid radialLines={false} stroke="hsl(var(--border))" />
+                    <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
+                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                  </RadialBarChart>
+                </ChartContainer>
+              )}
+            </div>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr] mt-8">
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Performance Over Time</h2>
+                <span className="text-xs text-muted-foreground">Line Chart</span>
+              </div>
+              {lineData.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-6">No timeline data yet.</p>
+              ) : (
+                <ChartContainer
+                  config={{
+                    overall: { label: "Interview Score", color: "hsl(140 70% 45%)" },
+                    confidence: { label: "Confidence", color: "hsl(210 85% 55%)" },
+                  }}
+                  className="h-72 mt-4"
+                >
+                  <LineChart data={lineData} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} domain={[0, 100]} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="overall" stroke="var(--color-overall)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="confidence" stroke="var(--color-confidence)" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ChartContainer>
+              )}
+            </div>
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Interview Type Distribution</h2>
+                <span className="text-xs text-muted-foreground">Pie Chart</span>
+              </div>
+              {pieData.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-6">No interview types yet.</p>
+              ) : (
+                <ChartContainer
+                  config={{ value: { label: "Count", color: "hsl(210 85% 55%)" } }}
+                  className="h-64 mt-4"
+                >
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} />
+                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                  </PieChart>
+                </ChartContainer>
+              )}
+            </div>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-2 mt-8">
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Strength vs Weakness</h2>
+                <span className="text-xs text-muted-foreground">Bar Chart</span>
+              </div>
+              {strengthData.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-6">No strength data yet.</p>
+              ) : (
+                <ChartContainer
+                  config={{
+                    score: { label: "Strength", color: "hsl(140 70% 45%)" },
+                    gap: { label: "Gap", color: "hsl(0 70% 55%)" },
+                  }}
+                  className="h-64 mt-4"
+                >
+                  <BarChart data={strengthData} margin={{ left: 12, right: 12, top: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="metric" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} domain={[0, 100]} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Bar dataKey="score" fill="var(--color-score)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="gap" fill="var(--color-gap)" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </div>
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">AI Performance Summary</h2>
+                <span className="text-xs text-muted-foreground">OpenRouter</span>
+              </div>
+              {summaryLoading && <p className="text-sm text-muted-foreground mt-4">Generating summary…</p>}
+              {!summaryLoading && !summary && (
+                <p className="text-sm text-muted-foreground mt-4">Complete interviews to generate AI insights.</p>
+              )}
+              {summary && (
+                <div className="mt-4 space-y-4">
+                  <p className="text-sm text-foreground">{summary.summary}</p>
+                  <div className="grid gap-3 text-sm">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Strengths</p>
+                      <p className="text-foreground">{summary.strengths.join(", ") || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Weaknesses</p>
+                      <p className="text-foreground">{summary.weaknesses.join(", ") || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Suggestions</p>
+                      <p className="text-foreground">{summary.suggestions.join(", ") || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Emotion Analytics</h2>
+              <span className="text-xs text-muted-foreground">Face analysis</span>
+            </div>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">Emotional Performance</h3>
+                  <span className="text-xs text-muted-foreground">Radar Chart</span>
+                </div>
+                {emotionRadar.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-6">Emotion analytics appear after camera sessions.</p>
+                ) : (
+                  <ChartContainer
+                    config={{ score: { label: "Score", color: "hsl(210 85% 55%)" } }}
+                    className="h-64 mt-4"
+                  >
+                    <RadarChart data={emotionRadar}>
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarAngleAxis dataKey="metric" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                      <Radar dataKey="score" fill="var(--color-score)" fillOpacity={0.45} stroke="var(--color-score)" />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </RadarChart>
+                  </ChartContainer>
+                )}
+              </div>
+              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">Emotion Timeline</h3>
+                  <span className="text-xs text-muted-foreground">Line Chart</span>
+                </div>
+                {emotionLine.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-6">No emotion timeline yet.</p>
+                ) : (
+                  <ChartContainer
+                    config={{
+                      confidence: { label: "Confidence", color: "hsl(210 85% 55%)" },
+                      stress: { label: "Stress", color: "hsl(0 70% 55%)" },
+                      engagement: { label: "Engagement", color: "hsl(140 70% 45%)" },
+                    }}
+                    className="h-64 mt-4"
+                  >
+                    <LineChart data={emotionLine} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} domain={[0, 100]} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="confidence" stroke="var(--color-confidence)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="stress" stroke="var(--color-stress)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="engagement" stroke="var(--color-engagement)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ChartContainer>
+                )}
+              </div>
+              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">Emotion Distribution</h3>
+                  <span className="text-xs text-muted-foreground">Pie Chart</span>
+                </div>
+                {emotionPie.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-6">No emotion distribution yet.</p>
+                ) : (
+                  <ChartContainer config={{ value: { label: "Count", color: "hsl(210 85% 55%)" } }} className="h-64 mt-4">
+                    <PieChart>
+                      <Pie data={emotionPie} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} />
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    </PieChart>
+                  </ChartContainer>
+                )}
+              </div>
+              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">Face Analysis Score</h3>
+                  <span className="text-xs text-muted-foreground">Radial Bar</span>
+                </div>
+                {emotionRadial.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-6">No face analysis data yet.</p>
+                ) : (
+                  <ChartContainer config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }} className="h-64 mt-4">
+                    <RadialBarChart innerRadius={40} outerRadius={120} data={emotionRadial} startAngle={90} endAngle={-270}>
+                      <PolarGrid radialLines={false} stroke="hsl(var(--border))" />
+                      <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                    </RadialBarChart>
+                  </ChartContainer>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm mt-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground">Emotion Report</h3>
+                <span className="text-xs text-muted-foreground">OpenRouter</span>
+              </div>
+              {latestReport?.emotionReport?.length ? (
+                <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+                  {latestReport.emotionReport.map((item, index) => (
+                    <li key={index}>• {item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-4">Emotion feedback appears after camera sessions.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-3 mt-8">
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground">Behavioral Interview Prep</h3>
+              <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+                {(latestReport?.weaknesses.length ? latestReport.weaknesses : ["Complete interviews to unlock insights."])
+                  .slice(0, 3)
+                  .map((item, index) => (
+                    <li key={index}>• {item}</li>
+                  ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground">Technical Interview Prep</h3>
+              <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+                {(latestReport?.strengths.length ? latestReport.strengths : ["Complete interviews to unlock insights."])
+                  .slice(0, 3)
+                  .map((item, index) => (
+                    <li key={index}>• {item}</li>
+                  ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground">AI Suggestions</h3>
+              <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+                {(summary?.suggestions.length ? summary.suggestions : ["Complete interviews to unlock insights."])
+                  .slice(0, 3)
+                  .map((item, index) => (
+                    <li key={index}>• {item}</li>
+                  ))}
+              </ul>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border-2 border-border bg-card p-5 mt-8 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Recent Interviews</h2>
+              <span className="text-xs text-muted-foreground">Click a row for details</span>
+            </div>
+            {reports.length === 0 ? (
+              <p className="text-sm text-muted-foreground mt-4">No interviews recorded yet.</p>
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="py-2">Date</th>
+                      <th className="py-2">Interview Type</th>
+                      <th className="py-2">Score</th>
+                      <th className="py-2">Duration</th>
+                      <th className="py-2">Feedback</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-foreground">
+                    {reports.slice(0, 6).map((report) => (
+                      <tr key={report.id} className="border-t border-border/60">
+                        <td className="py-3 pr-4">{formatDate(report.createdAt ?? null)}</td>
+                        <td className="py-3 pr-4">{inferInterviewType(report.topics || "")}</td>
+                        <td className="py-3 pr-4">{report.overall}%</td>
+                        <td className="py-3 pr-4">{report.durationMs ? `${Math.round(report.durationMs / 60000)} min` : "-"}</td>
+                        <td className="py-3">{report.summary}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-3 mt-8">
+            {[
+              { title: "Confidence Trend", key: "confidence", color: "hsl(210 85% 55%)" },
+              { title: "Communication Trend", key: "communication", color: "hsl(140 70% 45%)" },
+              { title: "Technical Improvement", key: "technical", color: "hsl(32 85% 55%)" },
+            ].map((trend) => (
+              <div key={trend.key} className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">{trend.title}</h3>
+                  <span className="text-xs text-muted-foreground">Trend</span>
+                </div>
+                {lineData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-4">No trend data yet.</p>
+                ) : (
+                  <ChartContainer
+                    config={{ [trend.key]: { label: trend.title, color: trend.color } }}
+                    className="h-48 mt-4"
+                  >
+                    <LineChart data={lineData} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+                      <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} domain={[0, 100]} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey={trend.key} stroke={`var(--color-${trend.key})`} strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ChartContainer>
+                )}
+              </div>
+            ))}
+          </section>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}

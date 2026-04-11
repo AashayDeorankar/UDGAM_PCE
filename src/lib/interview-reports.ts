@@ -24,6 +24,11 @@ export type InterviewReportRecord = {
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
+  durationMs?: number;
+  emotionAverages?: Record<string, number>;
+  emotionDistribution?: Record<string, number>;
+  emotionTimeline?: Array<{ t: number; confidence: number; stress: number; engagement: number }>;
+  emotionReport?: string[];
   createdAt?: { toDate: () => Date } | null;
 };
 

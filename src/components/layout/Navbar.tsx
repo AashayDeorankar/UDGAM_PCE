@@ -251,6 +251,16 @@ export function Navbar() {
                       variant="outline"
                       onClick={() => {
                         setIsOpen(false);
+                        navigate("/dashboard");
+                      }}
+                    >
+                      Dashboard
+                    </Button>
+                    <Button
+                      className="w-full rounded-full"
+                      variant="outline"
+                      onClick={() => {
+                        setIsOpen(false);
                         navigate("/profile");
                       }}
                     >
@@ -350,6 +360,16 @@ export function Navbar() {
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
               >
                 Upgrade plan
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate("/dashboard");
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
+              >
+                Dashboard
               </button>
               <button
                 type="button"
