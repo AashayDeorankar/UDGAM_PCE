@@ -6,6 +6,7 @@
 export type Mentor = {
   name: string;
   role: string;
+  category: "industry" | "alumni";
   expertise: string[];
   /** Experience (e.g. "5 years", "3+ years") – shown on mentor card */
   experience: string;
@@ -24,6 +25,7 @@ export const mentors: Mentor[] = [
   {
     name: "Suraj Verma",
     role: "SDE-2 @ Innovapptive",
+    category: "industry",
     expertise: ["Backend Development", "System Design", "SaaS Products", "REST APIs", "DSA", "Career Guidance"],
     experience: "4 years",
     image: "/mentors/suraj-verma.png",
@@ -35,6 +37,7 @@ export const mentors: Mentor[] = [
   {
     name: "Vijendra Shekhawat",
     role: "SDE-II @ Amazon",
+    category: "industry",
     expertise: ["DSA", "System Design", "Backend Development", "Java & Spring Boot", "Distributed Systems", "Microservices"],
     experience: "5+ years",
     image: "/mentors/vijendra-shekhawat.png",
@@ -46,6 +49,7 @@ export const mentors: Mentor[] = [
   {
     name: "Tejas Sudhir Tapas",
     role: "Senior Product Manager @ Bhanzu (Ex-SDE)",
+    category: "industry",
     expertise: ["Product Management", "SDE → PM Transition", "Product Strategy", "System Thinking", "Interview Prep", "Career Guidance"],
     experience: "5+ years",
     image: "/mentors/tejas-tapas.png",
@@ -57,6 +61,7 @@ export const mentors: Mentor[] = [
   {
     name: "Kagitha Rohit",
     role: "Software Engineer @ Zoomcar",
+    category: "industry",
     expertise: ["Backend Development", "Java & Spring Boot", "REST APIs", "AWS", "Databases & SQL", "DSA"],
     experience: "5+ years",
     image: "/mentors/kagitha-rohit.png",
@@ -68,6 +73,7 @@ export const mentors: Mentor[] = [
   {
     name: "Shashank Sahay",
     role: "Behavioral & Employability Trainer | Mentor of Change (NITI Aayog)",
+    category: "industry",
     expertise: ["Soft Skills", "Leadership", "Communication", "Emotional Intelligence", "Interview Prep", "Personal Branding"],
     experience: "12+ years",
     image: "/mentors/shashank-sahay.png",
@@ -77,6 +83,7 @@ export const mentors: Mentor[] = [
   {
     name: "Shikhar Sahu",
     role: "Software Engineer II @ Fivetran",
+    category: "industry",
     expertise: ["Backend Systems", "Scalable Code", "Product-Based Companies", "Interview Prep", "Career Guidance", "DSA"],
     experience: "3+ years",
     image: "/mentors/shikhar-sahu.png",
@@ -88,6 +95,7 @@ export const mentors: Mentor[] = [
   {
     name: "Mrudul Vajpayee",
     role: "SDE-1 @ Juspay",
+    category: "industry",
     expertise: ["Fintech Systems", "Backend Engineering", "System Design", "Functional Programming", "Interview Prep", "DSA"],
     experience: "3+ years",
     image: "/mentors/mrudul-vajpayee.png",
@@ -99,6 +107,7 @@ export const mentors: Mentor[] = [
   {
     name: "Mohammed Naveeduddin",
     role: "Principal Software Engineer @ Oracle",
+    category: "industry",
     expertise: ["Enterprise Software", "SQL & Data Analysis", "Product-Based Companies", "Technical Problem Solving", "Career Guidance", "DSA"],
     experience: "12+ years",
     image: "/mentors/mohammed-naveeduddin.png",
@@ -108,6 +117,7 @@ export const mentors: Mentor[] = [
   {
     name: "Ramakant Chhangani",
     role: "Specialist Programmer (STG) @ Infosys",
+    category: "industry",
     expertise: ["GenAI & LLMs", "RAG Applications", "LangChain", "Vector Databases", "System Design", "Backend Engineering", "Interview Prep", "Career Guidance"],
     experience: "3+ years",
     image: "/mentors/ramakant-chhangani.png",
@@ -117,6 +127,7 @@ export const mentors: Mentor[] = [
   {
     name: "Uma Mahesh",
     role: "Senior System Engineer @ IndiaMART",
+    category: "industry",
     expertise: ["PostgreSQL", "Distributed Systems", "Data Engineering", "CDC Pipelines", "BigQuery", "Backend Architecture", "Interview Prep", "Career Guidance"],
     experience: "4+ years",
     image: "/mentors/uma-mahesh.png",
@@ -126,6 +137,7 @@ export const mentors: Mentor[] = [
   {
     name: "Smruti Ranjan Badatya",
     role: "Software Engineer @ eLitmus",
+    category: "industry",
     expertise: ["Full-Stack Development", "Ruby on Rails", "React.js", "JavaScript & Node.js", "AWS", "Web Performance", "Interview Prep", "Career Guidance"],
     experience: "3+ years",
     image: "/mentors/smruti-badatya.png",
@@ -137,6 +149,7 @@ export const mentors: Mentor[] = [
   {
     name: "Rishabh Mittal",
     role: "Product Engineer @ DeltaX",
+    category: "industry",
     expertise: ["Product Engineering", "Backend & Frontend Development", "Scalable Web Applications", "System Design Basics", "Product Thinking", "Startup & Product Workflows"],
     experience: "3+ years",
     image: "/mentors/rishabh-mittal.png",
@@ -148,6 +161,7 @@ export const mentors: Mentor[] = [
   {
     name: "G. Aditya Sharma",
     role: "Full Stack Developer @ TCS",
+    category: "industry",
     expertise: ["Full-Stack Development", "Angular", "Node.js", "Oracle SQL", "REST APIs", "Agile Workflows", "Interview Prep", "Career Guidance"],
     experience: "3+ years",
     image: "https://media.licdn.com/dms/image/v2/D4D03AQHw4JuddPhFOw/profile-displayphoto-crop_800_800/B4DZlh7CkkJAAI-/0/1758284492345?e=1772064000&v=beta&t=vPIsFTK5A0ZF0MPDk1cVn2qRGVZDAQP-SrHt35jXsbo",
@@ -159,6 +173,7 @@ export const mentors: Mentor[] = [
   {
     name: "Prathamesh Rajbhoj",
     role: "Software Engineer (SDE-2) @ Kickdrum",
+    category: "industry",
     expertise: ["DSA", "Java & Spring Boot", "React.js", "REST APIs", "AWS", "Full-Stack Development", "Interview Prep", "Career Guidance"],
     experience: "2+ years",
     image: "https://media.licdn.com/dms/image/v2/D5603AQHs6KjTS8mXwA/profile-displayphoto-shrink_800_800/B56ZqVDUI7HYAc-/0/1763437269065?e=1772064000&v=beta&t=iR7pG3YvYAw_FgTssEzrMlyO8q1fLe818UMYVfrrLgc",
@@ -170,6 +185,7 @@ export const mentors: Mentor[] = [
   {
     name: "Romil Mahajan",
     role: "Product Management Intern @ Adobe",
+    category: "industry",
     expertise: [
       "Product Management",
       "Growth PM (Photoshop)",
@@ -188,6 +204,7 @@ export const mentors: Mentor[] = [
   {
     name: "Kush Munot",
     role: "Software Development Engineer @ Amadeus Labs",
+    category: "industry",
     expertise: ["Java & Spring Boot", "Full-Stack Development", "Open Source", "Internship Prep", "Backend Systems", "DSA"],
     experience: "2+ years",
     image: "https://media.licdn.com/dms/image/v2/D5603AQEb1N6XvaCF2w/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1693793997362?e=1772064000&v=beta&t=dVReTblOj5EtspLHtmA6knc4mYWFv_qm8-XmKi_-_dc",
@@ -198,6 +215,7 @@ export const mentors: Mentor[] = [
   {
     name: "Bhushan Madankar",
     role: "SWQAT Intern @ NVIDIA",
+    category: "industry",
     expertise: [
       "React.js",
       "Python",
@@ -214,6 +232,7 @@ export const mentors: Mentor[] = [
   {
     name: "Aarsh Gangulwar",
     role: "Engineering Intern @ Fam (Ex-Porter)",
+    category: "industry",
     expertise: [
       "Android Development",
       "Mobile App Development",
@@ -232,6 +251,7 @@ export const mentors: Mentor[] = [
   {
     name: "Deepa Chaudhary",
     role: "Software Engineer Intern @ PharmEasy",
+    category: "industry",
     expertise: [
       "Frontend Development",
       "React.js & UI",
@@ -248,9 +268,40 @@ export const mentors: Mentor[] = [
   {
     name: "Sujal (Kartik) Tayade",
     role: "Software Engineer @ HCLTech | AWS Cloud Engineer",
+    category: "industry",
     expertise: ["AWS Cloud Services", "Cloud Automation & DevOps", "CI/CD Pipelines", "SQL & Databases", "Java Backend Fundamentals", "Data Structures & Algorithms"],
     experience: "3+ years",
     image: "https://media.licdn.com/dms/image/v2/D4E03AQHbrFNMVleE5w/profile-displayphoto-crop_800_800/B4EZuNFyrKGoAI-/0/1767598665411?e=1772064000&v=beta&t=X7yARPMC3PSWOZcg7du6fsFKsUGTr6rS6OmiSWvQ34Q",
+    available: true,
+    price: "Free",
+  },
+  {
+    name: "Aditi Kulkarni",
+    role: "Alumni Mentor | SDE-1 @ Fintech Startup",
+    category: "alumni",
+    expertise: ["DSA Basics", "Resume Review", "Interview Prep", "College Placements"],
+    experience: "1+ year",
+    image: "/placeholder.svg",
+    available: true,
+    price: "Free",
+  },
+  {
+    name: "Rahul Sharma",
+    role: "Alumni Mentor | Data Analyst @ SaaS Company",
+    category: "alumni",
+    expertise: ["SQL", "Analytics", "Case Interviews", "Career Guidance"],
+    experience: "2+ years",
+    image: "/placeholder.svg",
+    available: true,
+    price: "Free",
+  },
+  {
+    name: "Sneha Patil",
+    role: "Alumni Mentor | Frontend Engineer",
+    category: "alumni",
+    expertise: ["React", "UI/UX", "Portfolio Review", "Mock Interviews"],
+    experience: "2+ years",
+    image: "/placeholder.svg",
     available: true,
     price: "Free",
   },

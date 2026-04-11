@@ -14,6 +14,11 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [target, setTarget] = useState("");
+  const [collegeName, setCollegeName] = useState("");
+  const [year, setYear] = useState("");
+  const [branch, setBranch] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [position, setPosition] = useState("");
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -25,10 +30,20 @@ export default function Profile() {
           name?: string;
           domain?: string;
           target?: string;
+          collegeName?: string;
+          year?: string;
+          branch?: string;
+          companyName?: string;
+          position?: string;
         };
         setName(data.name || "");
         setDomain(data.domain || "");
         setTarget(data.target || "");
+        setCollegeName(data.collegeName || "");
+        setYear(data.year || "");
+        setBranch(data.branch || "");
+        setCompanyName(data.companyName || "");
+        setPosition(data.position || "");
       } catch {
         // ignore
       }
@@ -47,6 +62,11 @@ export default function Profile() {
           email: user.email || "",
           domain,
           target,
+          collegeName,
+          year,
+          branch,
+          companyName,
+          position,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -80,10 +100,44 @@ export default function Profile() {
               <label className="text-xs font-medium text-muted-foreground">Domain</label>
               <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="Backend, AI/ML, Product" />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Target</label>
-              <Input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="SDE-1, Data Analyst" />
-            </div>
+            {role === "student" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Target</label>
+                <Input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="SDE-1, Data Analyst" />
+              </div>
+            )}
+            {role === "student" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">College name</label>
+                  <Input value={collegeName} onChange={(e) => setCollegeName(e.target.value)} placeholder="Your college" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Year</label>
+                  <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="3rd year" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Branch</label>
+                  <Input value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="CSE, ECE" />
+                </div>
+              </>
+            )}
+            {role === "alumni" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Company name</label>
+                  <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your company" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Position in company</label>
+                  <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="SDE-2, PM" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">College name</label>
+                  <Input value={collegeName} onChange={(e) => setCollegeName(e.target.value)} placeholder="Your college" />
+                </div>
+              </>
+            )}
             <div className="flex justify-end">
               <Button onClick={saveProfile} disabled={loading}>
                 {loading ? "Saving..." : "Save changes"}

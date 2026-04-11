@@ -32,9 +32,17 @@ interface AuthContextType {
   role: "student" | "alumni" | null;
   /** Set when Google sign-in fails (e.g. user cancelled popup). Clear after reading. */
   redirectError: Error | null;
-  signUp: (email: string, password: string, role: "student" | "alumni") => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    role: "student" | "alumni",
+    profile?: Record<string, string>
+  ) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: (role: "student" | "alumni") => Promise<{ error: Error | null }>;
+  signInWithGoogle: (
+    role: "student" | "alumni",
+    profile?: Record<string, string>
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   clearRedirectError: () => void;
 }
@@ -49,7 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = getFirebaseAuth();
   const db = getFirestoreDb();
 
-  const ensureProfile = async (firebaseUser: User, preferredRole?: "student" | "alumni") => {
+  const ensureProfile = async (
+    firebaseUser: User,
+    preferredRole?: "student" | "alumni",
+    profile?: Record<string, string>
+  ) => {
     const ref = doc(db, "users", firebaseUser.uid);
     const snap = await getDoc(ref);
     if (!snap.exists()) {
@@ -57,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(ref, {
         email: firebaseUser.email || "",
         role: roleToSet,
+        ...(profile || {}),
         createdAt: serverTimestamp(),
       });
       setRole(roleToSet);
@@ -94,10 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [auth]);
 
-  const signUp = async (email: string, password: string, preferredRole: "student" | "alumni") => {
+  const signUp = async (
+    email: string,
+    password: string,
+    preferredRole: "student" | "alumni",
+    profile?: Record<string, string>
+  ) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await ensureProfile(cred.user, preferredRole);
+      await ensureProfile(cred.user, preferredRole, profile);
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -113,11 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async (preferredRole: "student" | "alumni") => {
+  const signInWithGoogle = async (
+    preferredRole: "student" | "alumni",
+    profile?: Record<string, string>
+  ) => {
     try {
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
-      await ensureProfile(cred.user, preferredRole);
+      await ensureProfile(cred.user, preferredRole, profile);
       return { error: null };
     } catch (err) {
       const code = (err as { code?: string })?.code;

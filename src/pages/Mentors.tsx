@@ -212,16 +212,22 @@ export default function Mentors() {
     return () => unsub();
   }, [db, user]);
 
+  const { alumniMentors, industryMentors } = useMemo(() => {
+    const alumniList = mentors.filter((m) => m.category === "alumni");
+    const industryList = mentors.filter((m) => m.category !== "alumni");
+    return { alumniMentors: alumniList, industryMentors: industryList };
+  }, []);
+
   const rankedMentors = useMemo(() => {
-    if (recommendedNames.length === 0) return mentors;
+    if (recommendedNames.length === 0) return industryMentors;
     const order = new Map(recommendedNames.map((name, index) => [name, index]));
-    return [...mentors].sort((a, b) => {
+    return [...industryMentors].sort((a, b) => {
       const aRank = order.has(a.name) ? order.get(a.name) : Number.MAX_SAFE_INTEGER;
       const bRank = order.has(b.name) ? order.get(b.name) : Number.MAX_SAFE_INTEGER;
       if (aRank !== bRank) return aRank - bRank;
       return 0;
     });
-  }, [recommendedNames]);
+  }, [recommendedNames, industryMentors]);
 
   const runMatchmaking = async () => {
     if (matchLoading) return;
@@ -428,16 +434,42 @@ export default function Mentors() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {rankedMentors.map((mentor, index) => (
-              <MentorCard
-                key={`${mentor.name}-${index}`}
-                mentor={mentor}
-                index={index}
-                isRecommended={recommendedNames.includes(mentor.name)}
-                reason={recommendationReasons[mentor.name]}
-              />
-            ))}
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground">Alumni Mentors</h2>
+              <p className="text-xs text-muted-foreground">Connect via the alumni panel above.</p>
+            </div>
+            {alumniMentors.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No alumni mentors available yet.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {alumniMentors.map((mentor, index) => (
+                  <MentorCard
+                    key={`alumni-${mentor.name}-${index}`}
+                    mentor={mentor}
+                    index={index}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground">Industry Level Mentors</h2>
+              <p className="text-xs text-muted-foreground">AI matching picks the best fit.</p>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {rankedMentors.map((mentor, index) => (
+                <MentorCard
+                  key={`${mentor.name}-${index}`}
+                  mentor={mentor}
+                  index={index}
+                  isRecommended={recommendedNames.includes(mentor.name)}
+                  reason={recommendationReasons[mentor.name]}
+                />
+              ))}
+            </div>
           </div>
 
         </div>

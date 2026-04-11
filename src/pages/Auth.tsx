@@ -40,10 +40,29 @@ export default function Auth() {
   const [role, setRole] = useState<"student" | "alumni">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [domain, setDomain] = useState("");
+  const [target, setTarget] = useState("");
+  const [collegeName, setCollegeName] = useState("");
+  const [year, setYear] = useState("");
+  const [branch, setBranch] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [position, setPosition] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    fullName?: string;
+    domain?: string;
+    target?: string;
+    collegeName?: string;
+    year?: string;
+    branch?: string;
+    companyName?: string;
+    position?: string;
+  }>({});
 
   const { signIn, signUp, signInWithGoogle, user, loading, redirectError, clearRedirectError } = useAuth();
   const { toast } = useToast();
@@ -114,7 +133,18 @@ export default function Auth() {
   }, [user, loading, redirectTo]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: {
+      email?: string;
+      password?: string;
+      fullName?: string;
+      domain?: string;
+      target?: string;
+      collegeName?: string;
+      year?: string;
+      branch?: string;
+      companyName?: string;
+      position?: string;
+    } = {};
 
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
@@ -126,8 +156,43 @@ export default function Auth() {
       newErrors.password = passwordResult.error.errors[0].message;
     }
 
+    if (!isLogin) {
+      if (!fullName.trim()) newErrors.fullName = "Full name is required";
+      if (!domain.trim()) newErrors.domain = "Domain is required";
+      if (!collegeName.trim()) newErrors.collegeName = "College name is required";
+
+      if (role === "student") {
+        if (!target.trim()) newErrors.target = "Target is required";
+        if (!year.trim()) newErrors.year = "Year is required";
+        if (!branch.trim()) newErrors.branch = "Branch is required";
+      } else {
+        if (!companyName.trim()) newErrors.companyName = "Company name is required";
+        if (!position.trim()) newErrors.position = "Position is required";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const buildProfilePayload = () => {
+    if (role === "student") {
+      return {
+        name: fullName.trim(),
+        domain: domain.trim(),
+        target: target.trim(),
+        collegeName: collegeName.trim(),
+        year: year.trim(),
+        branch: branch.trim(),
+      };
+    }
+    return {
+      name: fullName.trim(),
+      domain: domain.trim(),
+      companyName: companyName.trim(),
+      collegeName: collegeName.trim(),
+      position: position.trim(),
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,7 +237,7 @@ export default function Auth() {
           requestAnimationFrame(() => scrollToTop());
         }
       } else {
-        const { error } = await signUp(email, password, role);
+        const { error } = await signUp(email, password, role, buildProfilePayload());
         if (error) {
           const code = (error as { code?: string }).code;
           if (code === "auth/email-already-in-use") {
@@ -209,7 +274,7 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await signInWithGoogle(role);
+      const { error } = await signInWithGoogle(role, buildProfilePayload());
       if (error) {
         toast({
           variant: "destructive",
@@ -374,6 +439,161 @@ export default function Auth() {
                 </p>
               </div>
               <motion.div variants={item} className="space-y-2">
+                {!isLogin && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName" className="text-sm font-medium">Full name</Label>
+                      <Input
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => {
+                          setFullName(e.target.value);
+                          setErrors((prev) => ({ ...prev, fullName: undefined }));
+                        }}
+                        placeholder="Your name"
+                        className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                      />
+                      {errors.fullName && (
+                        <p className="text-sm text-destructive">{errors.fullName}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="domain" className="text-sm font-medium">Domain</Label>
+                      <Input
+                        id="domain"
+                        value={domain}
+                        onChange={(e) => {
+                          setDomain(e.target.value);
+                          setErrors((prev) => ({ ...prev, domain: undefined }));
+                        }}
+                        placeholder="Backend, AI/ML, Product"
+                        className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                      />
+                      {errors.domain && (
+                        <p className="text-sm text-destructive">{errors.domain}</p>
+                      )}
+                    </div>
+                    {role === "student" ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="target" className="text-sm font-medium">Target</Label>
+                          <Input
+                            id="target"
+                            value={target}
+                            onChange={(e) => {
+                              setTarget(e.target.value);
+                              setErrors((prev) => ({ ...prev, target: undefined }));
+                            }}
+                            placeholder="SDE-1, Data Analyst"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.target && (
+                            <p className="text-sm text-destructive">{errors.target}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="collegeName" className="text-sm font-medium">College name</Label>
+                          <Input
+                            id="collegeName"
+                            value={collegeName}
+                            onChange={(e) => {
+                              setCollegeName(e.target.value);
+                              setErrors((prev) => ({ ...prev, collegeName: undefined }));
+                            }}
+                            placeholder="Your college"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.collegeName && (
+                            <p className="text-sm text-destructive">{errors.collegeName}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="year" className="text-sm font-medium">Year</Label>
+                          <Input
+                            id="year"
+                            value={year}
+                            onChange={(e) => {
+                              setYear(e.target.value);
+                              setErrors((prev) => ({ ...prev, year: undefined }));
+                            }}
+                            placeholder="3rd year"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.year && (
+                            <p className="text-sm text-destructive">{errors.year}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="branch" className="text-sm font-medium">Branch</Label>
+                          <Input
+                            id="branch"
+                            value={branch}
+                            onChange={(e) => {
+                              setBranch(e.target.value);
+                              setErrors((prev) => ({ ...prev, branch: undefined }));
+                            }}
+                            placeholder="CSE, ECE"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.branch && (
+                            <p className="text-sm text-destructive">{errors.branch}</p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="companyName" className="text-sm font-medium">Company name</Label>
+                          <Input
+                            id="companyName"
+                            value={companyName}
+                            onChange={(e) => {
+                              setCompanyName(e.target.value);
+                              setErrors((prev) => ({ ...prev, companyName: undefined }));
+                            }}
+                            placeholder="Your company"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.companyName && (
+                            <p className="text-sm text-destructive">{errors.companyName}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="position" className="text-sm font-medium">Position in company</Label>
+                          <Input
+                            id="position"
+                            value={position}
+                            onChange={(e) => {
+                              setPosition(e.target.value);
+                              setErrors((prev) => ({ ...prev, position: undefined }));
+                            }}
+                            placeholder="SDE-2, PM"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.position && (
+                            <p className="text-sm text-destructive">{errors.position}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="collegeName" className="text-sm font-medium">College name</Label>
+                          <Input
+                            id="collegeName"
+                            value={collegeName}
+                            onChange={(e) => {
+                              setCollegeName(e.target.value);
+                              setErrors((prev) => ({ ...prev, collegeName: undefined }));
+                            }}
+                            placeholder="Your college"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.collegeName && (
+                            <p className="text-sm text-destructive">{errors.collegeName}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
