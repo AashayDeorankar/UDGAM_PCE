@@ -4,7 +4,12 @@
  * - POST /api/interview/start
  * - POST /api/interview/message
  * - POST /api/interview/questions
+<<<<<<< HEAD
  * - POST /api/interview/evaluate
+=======
+ * - POST /api/interview/report
+ * - POST /api/interview/submit
+>>>>>>> origin/jayesh-mock-interview
  */
 import crypto from "crypto";
 import { callOpenRouter, safeJsonParse } from "./openrouter.mjs";
@@ -54,6 +59,7 @@ Rules:
 - Mix HR + technical based on role and topics.
 - One question per string, no numbering.`;
 
+<<<<<<< HEAD
 const GENERATE_MCQ_SYSTEM = `You generate multiple-choice interview questions.
 Return JSON ONLY in this exact shape:
 {"questions": [{"prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0}]}
@@ -82,6 +88,43 @@ Rules:
 - correctAnswer must be a short explanation (2-4 lines) of why the correct option is right.
 - strengths, missingPoints, mistakes: 1-2 short bullet strings each.
 - No markdown, no extra text.`;
+=======
+const EVAL_SYSTEM = `You are a professional interviewer evaluating candidate responses.
+Return JSON ONLY in this exact shape:
+{"technical_score": 0, "correctness": "Correct|Partially Correct|Incorrect", "remark": "...", "improvement": "..."}
+Rules:
+- technical_score is 0-100.
+- remark is 1-2 short sentences.
+- improvement is 1 short actionable sentence.
+- No extra text or markdown.`;
+
+const REPORT_SYSTEM = `You are an AI interview coach generating final performance report.
+Return JSON ONLY in this exact shape:
+{"summary": "...", "strengths": ["..."], "weakness": ["..."], "suggestions": ["..."], "recommended_level": "Beginner|Intermediate|Advanced"}
+Rules:
+- Summary is 1-2 sentences.
+- Strengths/weakness/suggestions are short bullets.
+- No extra text or markdown.`;
+
+const SUBMIT_SYSTEM = `You are a professional interview evaluator. Analyze full interview and generate performance report.
+Return JSON ONLY in this exact shape:
+{
+  "confidence": 0,
+  "fluency": 0,
+  "communication": 0,
+  "technical": 0,
+  "overall": 0,
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "suggestions": ["..."],
+  "summary": "..."
+}
+Rules:
+- Scores are 0-100.
+- Summary is 1-2 sentences.
+- Arrays contain short bullets.
+- No extra text or markdown.`;
+>>>>>>> origin/jayesh-mock-interview
 
 function buildNextQuestionPrompt(session, lastAnswer) {
   const topics = session.topics.length ? session.topics.join(", ") : "Not specified";
@@ -213,7 +256,12 @@ Generate ${count} interview questions now.`;
   const { content, error } = await callOpenRouter({
     system: mode === "mcq" ? GENERATE_MCQ_SYSTEM : GENERATE_Q_SYSTEM,
     messages: [{ role: "user", content: userPrompt }],
+<<<<<<< HEAD
     max_tokens: mode === "mcq" ? 900 : 450,
+=======
+    model: "google/gemini-2.0-flash-001",
+    max_tokens: 450,
+>>>>>>> origin/jayesh-mock-interview
     temperature: 0.3,
   });
 
@@ -286,7 +334,11 @@ Generate ${count} interview questions now.`;
   return { statusCode: 200, body: JSON.stringify({ questions: parsed.questions.slice(0, count) }) };
 }
 
+<<<<<<< HEAD
 export async function handleInterviewEvaluate(body) {
+=======
+export async function handleInterviewReport(body) {
+>>>>>>> origin/jayesh-mock-interview
   let payload;
   try {
     payload = JSON.parse(body || "{}");
@@ -294,6 +346,7 @@ export async function handleInterviewEvaluate(body) {
     return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
   }
 
+<<<<<<< HEAD
   const role = String(payload.role || "");
   const company = String(payload.company || "");
   const topics = toList(payload.topics);
@@ -394,10 +447,150 @@ Return one evaluation per question in the same order.`;
     system: EVALUATE_SYSTEM,
     messages: [{ role: "user", content: userPrompt }],
     max_tokens: 1800,
+=======
+  const results = payload.results;
+  if (!Array.isArray(results) || results.length === 0) {
+    return { statusCode: 200, body: JSON.stringify({ error: "Missing results" }) };
+  }
+
+  const userPrompt = `Based on following interview results generate summary report: ${JSON.stringify(results)}`;
+
+  const { content, error } = await callOpenRouter({
+    system: REPORT_SYSTEM,
+    messages: [{ role: "user", content: userPrompt }],
+    model: "google/gemini-2.0-flash-001",
+    max_tokens: 300,
+    temperature: 0.3,
+  });
+
+  if (error || !content) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        summary: "Final report unavailable.",
+        strengths: [],
+        weakness: [],
+        suggestions: [],
+        recommended_level: "",
+        raw: error || "",
+      }),
+    };
+  }
+
+  const parsed = safeJsonParse(content) || {};
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      summary: String(parsed.summary || ""),
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      weakness: Array.isArray(parsed.weakness) ? parsed.weakness : [],
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+      recommended_level: String(parsed.recommended_level || ""),
+      raw: content,
+    }),
+  };
+}
+
+export async function handleInterviewSubmit(body) {
+  let payload;
+  try {
+    payload = JSON.parse(body || "{}");
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
+  }
+
+  const interviewData = payload.interview_data;
+  const chatTranscript = String(payload.chat_transcript || "");
+  if (!Array.isArray(interviewData) || interviewData.length === 0) {
+    return { statusCode: 200, body: JSON.stringify({ error: "Missing interview data" }) };
+  }
+
+  const transcriptBlock = chatTranscript
+    ? `Full chat transcript:\n${chatTranscript}\n\n`
+    : "";
+  const userPrompt = `\n\nEvaluate this interview:\n\n${transcriptBlock}Questions and Answers:\n${JSON.stringify(interviewData)}\n\nEvaluate based on:\n\n1. Confidence (based on hesitation, fillers, clarity)\n2. Fluency (speech flow and pauses)\n3. Communication (clarity and structure)\n4. Technical correctness of answers\n\nReturn JSON in the required format.`;
+
+  const attempt = async (extraRule) => {
+    const prompt = extraRule ? `${userPrompt}\n\n${extraRule}` : userPrompt;
+    return await callOpenRouter({
+      system: SUBMIT_SYSTEM,
+      messages: [{ role: "user", content: prompt }],
+      model: "google/gemini-2.0-flash-001",
+      max_tokens: 450,
+      temperature: 0.2,
+    });
+  };
+
+  let { content, error } = await attempt("");
+  let parsed = safeJsonParse(content || "");
+  if (!parsed) {
+    const retry = await attempt("Return ONLY valid JSON. No markdown.");
+    content = retry.content;
+    error = retry.error;
+    parsed = safeJsonParse(content || "");
+  }
+
+  if (error || !parsed) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        confidence: 0,
+        fluency: 0,
+        communication: 0,
+        technical: 0,
+        overall: 0,
+        strengths: [],
+        weaknesses: [],
+        suggestions: [],
+        summary: "OpenRouter evaluation unavailable.",
+        raw: error || content || "",
+      }),
+    };
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      confidence: Number(parsed.confidence) || 0,
+      fluency: Number(parsed.fluency) || 0,
+      communication: Number(parsed.communication) || 0,
+      technical: Number(parsed.technical) || 0,
+      overall: Number(parsed.overall) || 0,
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+      summary: String(parsed.summary || ""),
+      raw: content || "",
+    }),
+  };
+}
+
+export async function handleInterviewEvaluation(body) {
+  let payload;
+  try {
+    payload = JSON.parse(body || "{}");
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
+  }
+
+  const question = String(payload.question || "");
+  const transcript = String(payload.transcript || "");
+  if (!question || !transcript) {
+    return { statusCode: 200, body: JSON.stringify({ error: "Missing question or transcript" }) };
+  }
+
+  const userPrompt = `Question: ${question}\nCandidate Answer: ${transcript}\nEvaluate correctness and provide score.`;
+
+  const { content, error } = await callOpenRouter({
+    system: EVAL_SYSTEM,
+    messages: [{ role: "user", content: userPrompt }],
+    max_tokens: 250,
+>>>>>>> origin/jayesh-mock-interview
     temperature: 0.2,
   });
 
   if (error || !content) {
+<<<<<<< HEAD
     const fallback = questions.map((question, index) => {
       const answer = (answers[index] || "").trim();
       const score = !answer ? 0 : Math.min(10, Math.max(2, Math.floor(answer.split(/\s+/).length / 6)));
@@ -446,4 +639,30 @@ Return one evaluation per question in the same order.`;
   }
 
   return { statusCode: 200, body: JSON.stringify({ evaluations: normalized }) };
+=======
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        technical_score: 0,
+        correctness: "",
+        remark: "OpenRouter evaluation unavailable.",
+        improvement: "",
+        raw: error || "",
+      }),
+    };
+  }
+
+  const parsed = safeJsonParse(content) || {};
+  const technicalScore = Number(parsed.technical_score);
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      technical_score: Number.isFinite(technicalScore) ? Math.min(100, Math.max(0, technicalScore)) : 0,
+      correctness: String(parsed.correctness || ""),
+      remark: String(parsed.remark || ""),
+      improvement: String(parsed.improvement || ""),
+      raw: content,
+    }),
+  };
+>>>>>>> origin/jayesh-mock-interview
 }

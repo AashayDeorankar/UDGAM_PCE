@@ -47,12 +47,16 @@ const { handleChat } = await import("./chat.mjs");
 const { handleBookSession } = await import("./book-session.mjs");
 const { handleRunCode } = await import("./run-code.mjs");
 const { handleMatchmaking } = await import("./matchmaking.mjs");
+<<<<<<< HEAD
 const {
   handleInterviewStart,
   handleInterviewMessage,
   handleInterviewQuestions,
   handleInterviewEvaluate,
 } = await import("./interview.mjs");
+=======
+const { handleInterviewStart, handleInterviewMessage, handleInterviewQuestions, handleInterviewEvaluation, handleInterviewReport, handleInterviewSubmit } = await import("./interview.mjs");
+>>>>>>> origin/jayesh-mock-interview
 const { handleFeedback } = await import("./feedback.mjs");
 const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
 const { setupSocketServer } = await import("./socket.mjs");
@@ -235,13 +239,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+<<<<<<< HEAD
   // POST /api/interview/evaluate – evaluate assessment answers
+=======
+  // POST /api/interview/evaluate – evaluate transcript correctness
+>>>>>>> origin/jayesh-mock-interview
   if (pathname === "/api/interview/evaluate" && (req.method || "").toUpperCase() === "POST") {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const body = Buffer.concat(chunks).toString("utf8") || "{}";
     try {
+<<<<<<< HEAD
       const out = await handleInterviewEvaluate(body);
+=======
+      const out = await handleInterviewEvaluation(body);
+>>>>>>> origin/jayesh-mock-interview
       res.writeHead(out.statusCode, { "Content-Type": "application/json" });
       res.end(out.body);
     } catch (err) {
@@ -252,6 +264,43 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+<<<<<<< HEAD
+=======
+  // POST /api/interview/report – final report generation
+  if (pathname === "/api/interview/report" && (req.method || "").toUpperCase() === "POST") {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString("utf8") || "{}";
+    try {
+      const out = await handleInterviewReport(body);
+      res.writeHead(out.statusCode, { "Content-Type": "application/json" });
+      res.end(out.body);
+    } catch (err) {
+      console.error("[interview/report]", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err?.message || err) }));
+    }
+    return;
+  }
+
+  // POST /api/interview/submit – evaluate full interview
+  if (pathname === "/api/interview/submit" && (req.method || "").toUpperCase() === "POST") {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString("utf8") || "{}";
+    try {
+      const out = await handleInterviewSubmit(body);
+      res.writeHead(out.statusCode, { "Content-Type": "application/json" });
+      res.end(out.body);
+    } catch (err) {
+      console.error("[interview/submit]", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err?.message || err) }));
+    }
+    return;
+  }
+
+>>>>>>> origin/jayesh-mock-interview
   // POST /api/feedback – structured feedback
   if (pathname === "/api/feedback" && (req.method || "").toUpperCase() === "POST") {
     const chunks = [];
