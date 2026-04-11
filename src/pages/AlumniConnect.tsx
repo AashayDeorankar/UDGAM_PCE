@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,7 +32,23 @@ export default function AlumniConnect() {
   const { user, role } = useAuth();
   const db = getFirestoreDb();
   const navigate = useNavigate();
-  const [connectUsers, setConnectUsers] = useState<{ id: string; email: string }[]>([]);
+  const [connectUsers, setConnectUsers] = useState<
+    {
+      id: string;
+      email: string;
+      role: "student" | "alumni";
+      name?: string;
+      domain?: string;
+      collegeName?: string;
+      year?: string;
+      branch?: string;
+      companyName?: string;
+      position?: string;
+    }[]
+  >([]);
+  const [connections, setConnections] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [collegeFilter, setCollegeFilter] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ id: string; from: string; text: string }[]>([]);
@@ -46,13 +63,34 @@ export default function AlumniConnect() {
     const loadConnectUsers = async () => {
       if (!user || role !== "alumni") return;
       try {
-        const q = query(collection(db, "users"), where("role", "==", "student"));
+        const q = query(collection(db, "users"), where("role", "in", ["student", "alumni"]));
         const snap = await getDocs(q);
         const list = snap.docs
-          .map((d) => ({
-            id: d.id,
-            email: String(d.data()?.email || ""),
-          }))
+          .map((d) => {
+            const data = d.data() as {
+              email?: string;
+              role?: "student" | "alumni";
+              name?: string;
+              domain?: string;
+              collegeName?: string;
+              year?: string;
+              branch?: string;
+              companyName?: string;
+              position?: string;
+            };
+            return {
+              id: d.id,
+              email: String(data.email || ""),
+              role: data.role || "student",
+              name: data.name || "",
+              domain: data.domain || "",
+              collegeName: data.collegeName || "",
+              year: data.year || "",
+              branch: data.branch || "",
+              companyName: data.companyName || "",
+              position: data.position || "",
+            };
+          })
           .filter((d) => d.id !== user.uid);
         setConnectUsers(list);
       } catch {
@@ -60,6 +98,21 @@ export default function AlumniConnect() {
       }
     };
     loadConnectUsers();
+  }, [db, user, role]);
+
+  useEffect(() => {
+    if (!user || role !== "alumni") return;
+    const q = query(collection(db, "connections"), where("participants", "array-contains", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      const next: Record<string, string> = {};
+      snap.docs.forEach((docSnap) => {
+        const data = docSnap.data() as { participants?: string[]; status?: string };
+        const partnerId = (data.participants || []).find((id) => id !== user.uid);
+        if (partnerId) next[partnerId] = data.status || "pending";
+      });
+      setConnections(next);
+    });
+    return () => unsub();
   }, [db, user, role]);
 
   const buildChatId = (a: string, b: string) => [a, b].sort().join("_");
@@ -84,21 +137,52 @@ export default function AlumniConnect() {
     setChatOpen(true);
   };
 
-  const connectWithStudent = async (partnerId: string, partnerEmail: string) => {
+  const sendConnectionRequest = async (partnerId: string, partnerEmail: string) => {
     if (!user) return;
     const connId = buildChatId(user.uid, partnerId);
     await setDoc(
       doc(db, "connections", connId),
       {
-        studentId: partnerId,
-        alumniId: user.uid,
-        status: "connected",
+        participants: [user.uid, partnerId],
+        requesterId: user.uid,
+        recipientId: partnerId,
+        requesterEmail: user.email || "",
+        recipientEmail: partnerEmail,
+        status: "pending",
         updatedAt: serverTimestamp(),
+        requestedAt: serverTimestamp(),
       },
       { merge: true },
     );
-    await openChatWith(partnerId, partnerEmail);
   };
+
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const college = collegeFilter.trim().toLowerCase();
+    return connectUsers.filter((u) => {
+      const name = (u.name || "").toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      const domain = (u.domain || "").toLowerCase();
+      const company = (u.companyName || "").toLowerCase();
+      const position = (u.position || "").toLowerCase();
+      const branch = (u.branch || "").toLowerCase();
+      const year = (u.year || "").toLowerCase();
+      const collegeName = (u.collegeName || "").toLowerCase();
+      const matchesTerm = !term || [name, email, domain, company, position, branch, year].some((v) => v.includes(term));
+      const matchesCollege = !college || collegeName.includes(college);
+      return matchesTerm && matchesCollege;
+    });
+  }, [connectUsers, search, collegeFilter]);
+
+  const studentsList = useMemo(
+    () => filteredUsers.filter((u) => u.role === "student"),
+    [filteredUsers],
+  );
+
+  const alumniList = useMemo(
+    () => filteredUsers.filter((u) => u.role === "alumni"),
+    [filteredUsers],
+  );
 
   useEffect(() => {
     if (!activeChat) return;
@@ -111,28 +195,92 @@ export default function AlumniConnect() {
       const msgs = snap.docs.map((d) => {
         const data = d.data() as { from?: string; text?: string };
         return { id: d.id, from: data.from || "", text: data.text || "" };
-      });
-      setChatMessages(msgs);
-      setChatLoading(false);
-    });
-    return () => unsub();
-  }, [db, activeChat]);
+          } else (
+            <div className="max-w-4xl mx-auto rounded-xl border-2 border-border bg-card p-4 md:p-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+                <h3 className="font-semibold text-foreground">Connect</h3>
+                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search name, domain, role..."
+                    className="md:w-64"
+                  />
+                  <Input
+                    value={collegeFilter}
+                    onChange={(e) => setCollegeFilter(e.target.value)}
+                    placeholder="Filter by college"
+                    className="md:w-56"
+                  />
+                </div>
+              </div>
 
-  const sendChatMessage = async () => {
-    const trimmed = chatInput.trim();
-    if (!trimmed || !activeChat || !user) return;
-    setChatInput("");
-    await addDoc(collection(db, "chats", activeChat.chatId, "messages"), {
-      from: user.uid,
-      text: trimmed,
-      createdAt: serverTimestamp(),
-    });
-    await setDoc(doc(db, "chats", activeChat.chatId), { updatedAt: serverTimestamp() }, { merge: true });
-  };
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">Students</h4>
+                  {studentsList.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No student profiles available yet.</p>
+                  )}
+                  <div className="space-y-3">
+                    {studentsList.map((student) => {
+                      const status = connections[student.id];
+                      return (
+                        <div key={student.id} className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{student.name || student.email || "Student"}</p>
+                            <p className="text-xs text-muted-foreground">Student • {student.domain || "General"}</p>
+                            <p className="text-xs text-muted-foreground">{student.collegeName || "College"} • {student.year || "Year"} • {student.branch || "Branch"}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="gap-1.5"
+                            variant={status === "connected" ? "outline" : "default"}
+                            onClick={() => sendConnectionRequest(student.id, student.email)}
+                            disabled={status === "pending" || status === "connected"}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            {status === "pending" ? "Requested" : status === "connected" ? "Connected" : "Connect"}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">Alumni</h4>
+                  {alumniList.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No alumni profiles available yet.</p>
+                  )}
+                  <div className="space-y-3">
+                    {alumniList.map((alumni) => {
+                      const status = connections[alumni.id];
+                      return (
+                        <div key={alumni.id} className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{alumni.name || alumni.email || "Alumni"}</p>
+                            <p className="text-xs text-muted-foreground">Alumni • {alumni.domain || "General"}</p>
+                            <p className="text-xs text-muted-foreground">{alumni.companyName || "Company"} • {alumni.position || "Role"}</p>
+                            <p className="text-xs text-muted-foreground">{alumni.collegeName || "College"}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="gap-1.5"
+                            variant={status === "connected" ? "outline" : "default"}
+                            onClick={() => sendConnectionRequest(alumni.id, alumni.email)}
+                            disabled={status === "pending" || status === "connected"}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            {status === "pending" ? "Requested" : status === "connected" ? "Connected" : "Connect"}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
       <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-secondary/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-dots opacity-40" />

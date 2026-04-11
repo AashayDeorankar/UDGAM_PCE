@@ -17,6 +17,8 @@ import MockInterview from "./pages/MockInterview";
 import InterviewPrepQuestions from "./pages/InterviewPrepQuestions";
 import DsaPracticePage from "./pages/DsaPracticePage";
 import SqlPracticePage from "./pages/SqlPracticePage";
+import AIAssistantPage from "./pages/AIAssistantPage";
+import ResourcesPage from "./pages/ResourcesPage";
 import AlumniConnect from "./pages/AlumniConnect";
 import AlumniInbox from "./pages/AlumniInbox";
 import UploadPage from "./pages/UploadPage";
@@ -78,6 +80,8 @@ const App = () => (
             <Route path="/view" element={<ProtectedRoute><NoteViewPage /></ProtectedRoute>} />
             <Route path="/interview-prep" element={<ProtectedRoute><InterviewPrep /></ProtectedRoute>} />
             <Route path="/mock-interview" element={<ProtectedRoute><MockInterview /></ProtectedRoute>} />
+            <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistantPage /></ProtectedRoute>} />
+            <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
             <Route path="/alumni/connect" element={<ProtectedRoute><AlumniConnect /></ProtectedRoute>} />
             <Route path="/alumni/inbox" element={<ProtectedRoute><AlumniInbox /></ProtectedRoute>} />
             <Route path="/interview-prep/:company/dsa/practice/:questionIndex" element={<ProtectedRoute><DsaPracticePage /></ProtectedRoute>} />

@@ -18,7 +18,8 @@ const studentLinks = [
 const alumniLinks = [
   { name: "Connect", href: "/alumni/connect" },
   { name: "Inbox", href: "/alumni/inbox" },
-  { name: "Question Practice", href: "/interview-prep" },
+  { name: "AI Assistant", href: "/ai-assistant" },
+  { name: "Resources", href: "/resources" },
 ];
 
 export function Navbar() {
