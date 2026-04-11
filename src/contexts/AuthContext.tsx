@@ -86,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(userRef, {
         email: firebaseUser.email || "",
         role: resolvedRole,
+        membershipTier: "free",
+        alumniSessionsUsed: 0,
         ...(profile || {}),
         createdAt: serverTimestamp(),
       });
@@ -94,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {
           email: firebaseUser.email || "",
           role: resolvedRole,
+          membershipTier: "free",
+          alumniSessionsUsed: 0,
           ...(profile || {}),
           createdAt: serverTimestamp(),
         },
@@ -103,17 +107,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const data = snap.data() as { role?: "student" | "alumni" };
+    const data = snap.data() as { role?: "student" | "alumni"; membershipTier?: string; alumniSessionsUsed?: number };
     const currentRole = data?.role || "student";
     const roleToSet = preferredRole || resolvedRole || currentRole;
-    if (roleToSet !== currentRole || profile) {
+    const profilePatch: Record<string, unknown> = {
+      role: roleToSet,
+      ...(profile || {}),
+      updatedAt: serverTimestamp(),
+    };
+
+    if (!data?.membershipTier) profilePatch.membershipTier = "free";
+    if (typeof data?.alumniSessionsUsed !== "number") profilePatch.alumniSessionsUsed = 0;
+
+    if (roleToSet !== currentRole || profile || profilePatch.membershipTier || profilePatch.alumniSessionsUsed === 0) {
       await setDoc(
         userRef,
-        {
-          role: roleToSet,
-          ...(profile || {}),
-          updatedAt: serverTimestamp(),
-        },
+        profilePatch,
         { merge: true },
       );
       await setDoc(
@@ -121,6 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {
           email: firebaseUser.email || "",
           role: roleToSet,
+          ...(profilePatch.membershipTier ? { membershipTier: profilePatch.membershipTier } : {}),
+          ...(typeof profilePatch.alumniSessionsUsed === "number" ? { alumniSessionsUsed: profilePatch.alumniSessionsUsed } : {}),
           ...(profile || {}),
           updatedAt: serverTimestamp(),
         },

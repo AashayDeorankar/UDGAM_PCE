@@ -42,7 +42,7 @@ loadEnv();
 
 // Render/Railway set PORT; local dev uses CHAT_API_PORT or 3001
 const PORT = Number(process.env.PORT) || Number(process.env.CHAT_API_PORT) || 3001;
-const { getPresignedUrl, getUploadPresignedUrl } = await import("./presign.mjs");
+const { getPresignedUrl, getUploadPresignedUrl, getProfileUploadPresignedUrl } = await import("./presign.mjs");
 const { handleChat } = await import("./chat.mjs");
 const { handleBookSession } = await import("./book-session.mjs");
 const { handleRunCode } = await import("./run-code.mjs");
@@ -52,11 +52,12 @@ const { handleInterviewStart, handleInterviewMessage, handleInterviewQuestions, 
 const { handleFeedback } = await import("./feedback.mjs");
 const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
 const { setupSocketServer } = await import("./socket.mjs");
+const { getAdminAuth, extractBearerToken } = await import("./firebase-admin.mjs");
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
     res.writeHead(200);
@@ -83,7 +84,9 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) chunks.push(chunk);
     const body = Buffer.concat(chunks).toString("utf8") || "{}";
     try {
-      const out = await handleBookSession(body);
+      const out = await handleBookSession(body, {
+        authorization: req.headers.authorization || "",
+      });
       res.writeHead(out.statusCode, { "Content-Type": "application/json" });
       res.end(out.body);
     } catch (err) {
@@ -140,6 +143,36 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ uploadUrl, fileUrl }));
     } catch (err) {
       console.error("[upload-presign]", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err?.message || err) }));
+    }
+    return;
+  }
+
+  // POST /api/profile-upload-presign – S3 presigned PUT for profile image upload
+  if (pathname === "/api/profile-upload-presign" && (req.method || "").toUpperCase() === "POST") {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString("utf8") || "{}";
+    try {
+      const token = extractBearerToken(req.headers.authorization || "");
+      if (!token) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing auth token" }));
+        return;
+      }
+
+      const decoded = await getAdminAuth().verifyIdToken(token, true);
+      const data = JSON.parse(body);
+      const { uploadUrl, fileUrl } = await getProfileUploadPresignedUrl({
+        userId: decoded.uid,
+        fileName: data.fileName,
+        contentType: data.contentType,
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ uploadUrl, fileUrl }));
+    } catch (err) {
+      console.error("[profile-upload-presign]", err);
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: String(err?.message || err) }));
     }

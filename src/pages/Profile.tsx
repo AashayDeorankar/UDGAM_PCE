@@ -3,14 +3,27 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getFirestoreDb } from "@/integrations/firebase/config";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { uploadProfileImage } from "@/lib/upload-file";
+import { Upload } from "lucide-react";
+import { FREE_ALUMNI_SESSION_LIMIT, type MembershipTier, normalizeMembershipTier } from "@/lib/membership";
 
 export default function Profile() {
-  const { user, role } = useAuth();
+  const { user, role, isAdmin } = useAuth();
+  const { toast } = useToast();
   const db = getFirestoreDb();
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [target, setTarget] = useState("");
@@ -19,37 +32,147 @@ export default function Profile() {
   const [branch, setBranch] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [position, setPosition] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [membershipTier, setMembershipTier] = useState<MembershipTier>("free");
+  const [alumniSessionsUsed, setAlumniSessionsUsed] = useState(0);
+
+  const applyProfileData = (data: {
+    name?: string;
+    domain?: string;
+    target?: string;
+    collegeName?: string;
+    year?: string;
+    branch?: string;
+    companyName?: string;
+    position?: string;
+    profileImageUrl?: string;
+    membershipTier?: string;
+    alumniSessionsUsed?: number;
+  }) => {
+    setName(data.name || "");
+    setDomain(data.domain || "");
+    setTarget(data.target || "");
+    setCollegeName(data.collegeName || "");
+    setYear(data.year || "");
+    setBranch(data.branch || "");
+    setCompanyName(data.companyName || "");
+    setPosition(data.position || "");
+    setProfileImageUrl(data.profileImageUrl || "");
+    setMembershipTier(normalizeMembershipTier(data.membershipTier));
+    setAlumniSessionsUsed(typeof data.alumniSessionsUsed === "number" ? data.alumniSessionsUsed : 0);
+  };
 
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) return;
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (!snap.exists()) return;
-        const data = snap.data() as {
-          name?: string;
-          domain?: string;
-          target?: string;
-          collegeName?: string;
-          year?: string;
-          branch?: string;
-          companyName?: string;
-          position?: string;
-        };
-        setName(data.name || "");
-        setDomain(data.domain || "");
-        setTarget(data.target || "");
-        setCollegeName(data.collegeName || "");
-        setYear(data.year || "");
-        setBranch(data.branch || "");
-        setCompanyName(data.companyName || "");
-        setPosition(data.position || "");
-      } catch {
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    const unsub = onSnapshot(
+      userRef,
+      async (snap) => {
+        if (snap.exists()) {
+          applyProfileData(snap.data() as {
+            name?: string;
+            domain?: string;
+            target?: string;
+            collegeName?: string;
+            year?: string;
+            branch?: string;
+            companyName?: string;
+            position?: string;
+            profileImageUrl?: string;
+            membershipTier?: string;
+            alumniSessionsUsed?: number;
+          });
+          return;
+        }
+
+        // Backward-compatible fallback if older accounts only have role-specific docs.
+        if (!role) return;
+        try {
+          const roleSnap = await getDoc(doc(db, role === "alumni" ? "alumni" : "students", user.uid));
+          if (!roleSnap.exists()) return;
+
+          const roleData = roleSnap.data() as {
+            name?: string;
+            domain?: string;
+            target?: string;
+            collegeName?: string;
+            year?: string;
+            branch?: string;
+            companyName?: string;
+            position?: string;
+            profileImageUrl?: string;
+            membershipTier?: string;
+            alumniSessionsUsed?: number;
+          };
+          applyProfileData(roleData);
+
+          await setDoc(
+            userRef,
+            {
+              email: user.email || "",
+              role,
+              ...roleData,
+              membershipTier: normalizeMembershipTier(roleData.membershipTier),
+              alumniSessionsUsed: typeof roleData.alumniSessionsUsed === "number" ? roleData.alumniSessionsUsed : 0,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        } catch {
+          // ignore
+        }
+      },
+      () => {
         // ignore
+      },
+    );
+
+    return () => unsub();
+  }, [db, role, user]);
+
+  const handleProfilePhotoUpload = async (file: File | null) => {
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const idToken = await user.getIdToken();
+      const uploaded = await uploadProfileImage(file, idToken);
+      if ("error" in uploaded) {
+        toast({
+          title: "Upload failed",
+          description: uploaded.error,
+          variant: "destructive",
+        });
+        return;
       }
-    };
-    loadProfile();
-  }, [db, user]);
+
+      setProfileImageUrl(uploaded.url);
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          profileImageUrl: uploaded.url,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      toast({
+        title: "Photo uploaded",
+        description: "Profile picture saved successfully.",
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
 
   const saveProfile = async () => {
@@ -68,6 +191,9 @@ export default function Profile() {
           branch,
           companyName,
           position,
+          profileImageUrl,
+          membershipTier,
+          alumniSessionsUsed,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -89,6 +215,57 @@ export default function Profile() {
           </p>
 
           <div className="rounded-xl border-2 border-border bg-card p-5 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Profile picture</label>
+              <div className="mt-2 flex items-center gap-4">
+                {profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt={name || user?.email || "Profile"}
+                    className="h-16 w-16 rounded-full object-cover border border-border"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                    No photo
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingPhoto}
+                    onChange={(e) => handleProfilePhotoUpload(e.target.files?.[0] ?? null)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WEBP. Stored securely on AWS S3.</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Membership plan</label>
+              <Select
+                value={membershipTier}
+                onValueChange={(value: MembershipTier) => setMembershipTier(value)}
+                disabled={!isAdmin}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                  <SelectItem value="platinum">Platinum</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Free: up to {FREE_ALUMNI_SESSION_LIMIT} alumni sessions and paid industry sessions. Gold: full access. Platinum: full access with priority.
+              </p>
+              {!isAdmin && (
+                <p className="text-xs text-muted-foreground">Plan upgrades are managed by billing/admin.</p>
+              )}
+              {membershipTier === "free" && (
+                <p className="text-xs text-muted-foreground">Alumni sessions used: {alumniSessionsUsed}/{FREE_ALUMNI_SESSION_LIMIT}</p>
+              )}
+            </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Full name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
@@ -140,8 +317,13 @@ export default function Profile() {
               </>
             )}
             <div className="flex justify-end">
-              <Button onClick={saveProfile} disabled={loading}>
-                {loading ? "Saving..." : "Save changes"}
+              <Button onClick={saveProfile} disabled={loading || uploadingPhoto}>
+                {uploadingPhoto ? (
+                  <>
+                    <Upload className="h-4 w-4 animate-pulse" />
+                    Uploading photo...
+                  </>
+                ) : loading ? "Saving..." : "Save changes"}
               </Button>
             </div>
           </div>

@@ -8,6 +8,52 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { Resend } from "resend";
+import { FieldValue } from "firebase-admin/firestore";
+import { extractBearerToken, getAdminAuth, getAdminDb } from "./firebase-admin.mjs";
+
+const FREE_ALUMNI_SESSION_LIMIT = 3;
+const STATIC_ALUMNI_MENTOR_NAMES = new Set([
+  "Aditi Kulkarni",
+  "Rahul Sharma",
+  "Sneha Patil",
+]);
+
+function normalizeTier(value) {
+  if (value === "gold" || value === "platinum") return value;
+  return "free";
+}
+
+function normalizeMentorCategory(value) {
+  return value === "alumni" ? "alumni" : "industry";
+}
+
+/**
+ * Resolve mentor category server-side to avoid client payload tampering.
+ * If mentor email matches an alumni user, treat as alumni. Otherwise default to industry.
+ * When mentor email is missing, fall back to requested category.
+ */
+async function resolveAuthoritativeMentorCategory(adminDb, requestedCategory, mentorEmail, mentorName) {
+  const fallback = normalizeMentorCategory(requestedCategory);
+  const rawEmail = String(mentorEmail || "").trim();
+  if (!rawEmail) {
+    return STATIC_ALUMNI_MENTOR_NAMES.has(String(mentorName || "").trim()) ? "alumni" : "industry";
+  }
+
+  const candidates = Array.from(new Set([rawEmail, rawEmail.toLowerCase()]));
+  for (const email of candidates) {
+    try {
+      const snap = await adminDb.collection("users").where("email", "==", email).limit(1).get();
+      if (snap.empty) continue;
+      const data = snap.docs[0].data() || {};
+      return data.role === "alumni" ? "alumni" : "industry";
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+
+  // Email exists in request but doesn't map to alumni: keep it industry by default.
+  return "industry";
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -56,16 +102,31 @@ function getBookSessionEnv() {
 
 
 function buildEmailBody(data) {
-  const { mentorName, name, year, phone, email, reasonToConnect } = data;
+  const {
+    mentorName,
+    name,
+    year,
+    phone,
+    email,
+    reasonToConnect,
+    mentorCategory,
+    membershipTier,
+    requiresPaidSession,
+    isPriorityBooking,
+  } = data;
   const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Book Session Request</title></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 20px;">
-  <h2 style="color: #0f766e;">New session request – ${mentorName}</h2>
+  <h2 style="color: #0f766e;">${isPriorityBooking ? "[PRIORITY] " : ""}New session request – ${mentorName}</h2>
   <p>A student has requested to book a session. Details below.</p>
   <table style="width: 100%; border-collapse: collapse;">
     <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Mentor</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${mentorName}</td></tr>
+    <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Mentor category</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${mentorCategory || "industry"}</td></tr>
+    <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>User plan</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${membershipTier || "free"}</td></tr>
+    <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Priority booking</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${isPriorityBooking ? "Yes" : "No"}</td></tr>
+    <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Payment required</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${requiresPaidSession ? "Yes" : "No"}</td></tr>
     <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Name</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${name}</td></tr>
     <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Year</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${year}</td></tr>
     <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Phone</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${phone}</td></tr>
@@ -92,11 +153,26 @@ function buildEmailBody(data) {
 
 /** Same message as plain text for WhatsApp (no HTML) */
 function buildWhatsAppMessage(data) {
-  const { mentorName, name, year, phone, email, reasonToConnect } = data;
+  const {
+    mentorName,
+    name,
+    year,
+    phone,
+    email,
+    reasonToConnect,
+    mentorCategory,
+    membershipTier,
+    requiresPaidSession,
+    isPriorityBooking,
+  } = data;
   return [
-    "📌 *New session request – " + mentorName + "*",
+    "📌 *" + (isPriorityBooking ? "PRIORITY - " : "") + "New session request – " + mentorName + "*",
     "",
     "Mentor: " + mentorName,
+    "Mentor category: " + (mentorCategory || "industry"),
+    "User plan: " + (membershipTier || "free"),
+    "Priority: " + (isPriorityBooking ? "Yes" : "No"),
+    "Payment required: " + (requiresPaidSession ? "Yes" : "No"),
     "Name: " + name,
     "Year: " + year,
     "Phone: " + phone,
@@ -165,7 +241,7 @@ async function sendWhatsApp(phone, message, creds) {
   }
 }
 
-export async function handleBookSession(body) {
+export async function handleBookSession(body, context = {}) {
   try {
     loadEnv();
     const env = getBookSessionEnv();
@@ -186,9 +262,56 @@ export async function handleBookSession(body) {
     } catch (_) {
       return { statusCode: 400, body: JSON.stringify({ error: "Invalid request body" }) };
     }
-    const { mentorName, mentorEmail, mentorWhatsapp, name, year, phone, email, reasonToConnect } = payload || {};
+    const {
+      mentorName,
+      mentorEmail,
+      mentorWhatsapp,
+      name,
+      year,
+      phone,
+      email,
+      reasonToConnect,
+      mentorCategory,
+    } = payload || {};
 
-  if (!name || !year || !phone || !email || !reasonToConnect || !mentorName) {
+    const token = extractBearerToken(context.authorization);
+    if (!token) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Missing auth token. Please login again." }) };
+    }
+
+    let decoded;
+    try {
+      decoded = await getAdminAuth().verifyIdToken(token, true);
+    } catch (err) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid or expired auth token." }) };
+    }
+
+    const adminDb = getAdminDb();
+    const userRef = adminDb.collection("users").doc(decoded.uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      return { statusCode: 403, body: JSON.stringify({ error: "User profile not found. Please complete signup again." }) };
+    }
+
+    const userData = userSnap.data() || {};
+    const authoritativeTier = normalizeTier(userData.membershipTier);
+    const authoritativeCategory = await resolveAuthoritativeMentorCategory(adminDb, mentorCategory, mentorEmail, mentorName);
+    const alumniSessionsUsed = typeof userData.alumniSessionsUsed === "number" ? userData.alumniSessionsUsed : 0;
+
+    if (authoritativeCategory === "alumni" && authoritativeTier === "free" && alumniSessionsUsed >= FREE_ALUMNI_SESSION_LIMIT) {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({
+          error: `Free tier allows up to ${FREE_ALUMNI_SESSION_LIMIT} alumni sessions. Upgrade to Gold or Platinum.`,
+        }),
+      };
+    }
+
+    const requiresPaidSession = authoritativeCategory === "industry" && authoritativeTier === "free";
+    const isPriorityBooking = authoritativeTier === "platinum";
+    const requesterEmail = String(email || decoded.email || userData.email || "").trim();
+
+  if (!name || !year || !phone || !requesterEmail || !reasonToConnect || !mentorName) {
     return { statusCode: 400, body: JSON.stringify({ error: "Missing required fields" }) };
   }
 
@@ -202,11 +325,15 @@ export async function handleBookSession(body) {
     name,
     year,
     phone,
-    email,
+    email: requesterEmail,
     reasonToConnect,
+    mentorCategory: authoritativeCategory,
+    membershipTier: authoritativeTier,
+    requiresPaidSession,
+    isPriorityBooking,
   });
 
-  const subject = `Session request: ${name} → ${mentorName}`;
+  const subject = `${isPriorityBooking ? "[PRIORITY] " : ""}Session request: ${name} → ${mentorName}`;
   const recipients = [adminEmail].filter(Boolean);
   const isResendFreeTier = !env.RESEND_FROM_EMAIL || fromEmail.includes("onboarding@resend.dev");
   if (!isResendFreeTier && mentorEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mentorEmail)) {
@@ -258,8 +385,12 @@ export async function handleBookSession(body) {
       name,
       year,
       phone,
-      email,
+      email: requesterEmail,
       reasonToConnect,
+      mentorCategory: authoritativeCategory,
+      membershipTier: authoritativeTier,
+      requiresPaidSession,
+      isPriorityBooking,
     });
     const normalize = (n) => {
       const raw = String(n || "").replace(/\D/g, "");
@@ -277,6 +408,16 @@ export async function handleBookSession(body) {
     }
   } catch (err) {
     console.error("[book-session] WhatsApp error:", err);
+  }
+
+  if (authoritativeCategory === "alumni" && authoritativeTier === "free") {
+    await userRef.set(
+      {
+        alumniSessionsUsed: FieldValue.increment(1),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
   }
 
   return { statusCode: 200, body: JSON.stringify({ success: true }) };

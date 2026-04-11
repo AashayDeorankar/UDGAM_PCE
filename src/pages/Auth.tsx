@@ -175,6 +175,37 @@ export default function Auth() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateSignupProfileOnly = () => {
+    const newErrors: {
+      email?: string;
+      password?: string;
+      fullName?: string;
+      domain?: string;
+      target?: string;
+      collegeName?: string;
+      year?: string;
+      branch?: string;
+      companyName?: string;
+      position?: string;
+    } = {};
+
+    if (!fullName.trim()) newErrors.fullName = "Full name is required";
+    if (!domain.trim()) newErrors.domain = "Domain is required";
+    if (!collegeName.trim()) newErrors.collegeName = "College name is required";
+
+    if (role === "student") {
+      if (!target.trim()) newErrors.target = "Target is required";
+      if (!year.trim()) newErrors.year = "Year is required";
+      if (!branch.trim()) newErrors.branch = "Branch is required";
+    } else {
+      if (!companyName.trim()) newErrors.companyName = "Company name is required";
+      if (!position.trim()) newErrors.position = "Position is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const buildProfilePayload = () => {
     if (role === "student") {
       return {
@@ -272,9 +303,11 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isLogin && !validateSignupProfileOnly()) return;
     setGoogleLoading(true);
     try {
-      const { error } = await signInWithGoogle(role, buildProfilePayload());
+      const profilePayload = isLogin ? undefined : buildProfilePayload();
+      const { error } = await signInWithGoogle(role, profilePayload);
       if (error) {
         toast({
           variant: "destructive",
