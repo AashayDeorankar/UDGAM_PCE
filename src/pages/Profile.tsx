@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getFirestoreDb } from "@/integrations/firebase/config";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
 export default function Profile() {
   const { user, role } = useAuth();
@@ -50,6 +50,7 @@ export default function Profile() {
     };
     loadProfile();
   }, [db, user]);
+
 
   const saveProfile = async () => {
     if (!user) return;

@@ -1,4 +1,4 @@
-import { useState, useEffect, type MouseEvent } from "react";
+import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowRight, LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import logoImage from "@/assets/logo.png";
 
 const studentLinks = [
+  { name: "Connect", href: "/connect" },
   { name: "Resources", href: "/#branches" },
   { name: "Interview Prep", href: "/interview-prep" },
   { name: "AI Mock Interview", href: "/mock-interview" },
@@ -16,15 +17,16 @@ const studentLinks = [
 ];
 
 const alumniLinks = [
-  { name: "Connect", href: "/alumni/connect" },
+  { name: "Connect", href: "/connect" },
   { name: "Inbox", href: "/alumni/inbox" },
-  { name: "Question Practice", href: "/interview-prep" },
+  { name: "AI Assistant", href: "/ai-assistant" },
+  { name: "Resources", href: "/resources" },
 ];
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, signOut, loading, isAdmin, role } = useAuth();
+  const { user, signOut, loading, role } = useAuth();
   const navigate = useNavigate();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const navLinks = role === "alumni" ? alumniLinks : studentLinks;
@@ -37,7 +39,7 @@ export function Navbar() {
 
   useEffect(() => {
     if (!profileMenuOpen) return;
-    const onClick = (event: MouseEvent) => {
+    const onClick = (event: globalThis.MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest("[data-profile-menu]")) {
         setProfileMenuOpen(false);
@@ -56,7 +58,7 @@ export function Navbar() {
     setIsOpen(false);
   };
 
-  const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleNavClick = (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
     event.preventDefault();
     const [path, hash] = href.split("#");
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -86,7 +88,7 @@ export function Navbar() {
     >
       {/* Floating Pill Navbar */}
       <nav
-        className={`relative flex items-center justify-between gap-2 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full transition-all duration-300 overflow-hidden ${
+        className={`relative flex items-center justify-between gap-2 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full transition-all duration-300 overflow-visible ${
           scrolled
             ? "bg-background/95 backdrop-blur-md shadow-lg shadow-foreground/5"
             : "bg-background/90 backdrop-blur-sm shadow-md shadow-foreground/5"
@@ -103,7 +105,7 @@ export function Navbar() {
 
         {/* Desktop Navigation - Center */}
         <div className="hidden md:flex items-center gap-2 px-2 min-w-0 flex-1 justify-center">
-          {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
+          {navLinks.map((link) => {
             const isHashLink = link.href.startsWith("/#");
             const isPageLink = link.href.startsWith("/") && !isHashLink;
             const linkClass = "px-2 py-1 text-sm text-muted-foreground hover:text-primary link-underline transition-all duration-200 whitespace-nowrap";
@@ -155,7 +157,7 @@ export function Navbar() {
           >
             <div className="bg-background/95 backdrop-blur-md rounded-2xl shadow-lg shadow-foreground/5 border border-border/50 p-4 max-w-4xl mx-auto">
               <div className="flex flex-col gap-1">
-                {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
+                {navLinks.map((link) => {
                   const isHashLink = link.href.startsWith("/#");
                   const isPageLink = link.href.startsWith("/") && !isHashLink;
                   const linkClass = "px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-colors whitespace-nowrap";
@@ -207,6 +209,16 @@ export function Navbar() {
                       }}
                     >
                       Profile
+                    </Button>
+                    <Button
+                      className="w-full rounded-full"
+                      variant="outline"
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate("/requests");
+                      }}
+                    >
+                      Requests
                     </Button>
                     <Button
                       className="w-full rounded-full"
@@ -292,6 +304,16 @@ export function Navbar() {
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
               >
                 Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate("/requests");
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
+              >
+                Requests
               </button>
               <button
                 type="button"

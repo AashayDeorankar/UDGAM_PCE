@@ -45,3 +45,13 @@ npm run dev
 - **Output:** `dist`
 
 Server (API) agar alag deploy kar rahe ho (e.g. Railway, Render), wahan bhi same env variables add karo (OPENROUTER, RESEND, TWILIO, etc.).
+
+## S3 uploads (CORS)
+
+If uploads fail with a CORS error on the presigned PUT URL, add a CORS rule to the S3 bucket that allows your frontend origin.
+
+Use the config in `s3-cors.json` and apply it in AWS S3 → Bucket → Permissions → CORS, or via AWS CLI:
+
+```bash
+aws s3api put-bucket-cors --bucket <YOUR_BUCKET> --cors-configuration file://s3-cors.json
+```

@@ -20,7 +20,7 @@ const resources = [
     icon: FileClock,
     title: "Previous Year Papers",
     description: "PYQs with solutions. Ratta maaro, pass ho jao.",
-    count: "1,200+", 
+    count: "1,200+",
     tag: "📚 Exam Ready",
     emoji: "📄",
     available: true,
@@ -48,9 +48,10 @@ const resources = [
   },
 ];
 
-export function ResourcesSection() {
+export function ResourcesSection({ basePath = "", showCta = true }: { basePath?: string; showCta?: boolean }) {
   const { user } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const branchHref = basePath ? `${basePath}#branches` : "/#branches";
 
   return (
     <section id="resources" className="section-padding pb-12 md:pb-16 lg:pb-20 relative overflow-hidden">
@@ -66,7 +67,7 @@ export function ResourcesSection() {
             <Download className="h-3 w-3" />
             FREE DOWNLOADS
           </motion.div>
-          
+
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -84,7 +85,7 @@ export function ResourcesSection() {
           {resources.map((resource, index) => (
             <motion.a
               key={resource.title}
-              href={resource.available ? resource.link ?? "/#branches" : "#"}
+              href={resource.available ? (resource.link === "/#branches" ? branchHref : resource.link) : "#"}
               onClick={(e) => {
                 if (resource.available && !user) {
                   e.preventDefault();
@@ -96,8 +97,8 @@ export function ResourcesSection() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               className={`group relative p-6 md:p-8 border-2 border-border bg-card transition-all duration-300 ${
-                resource.available 
-                  ? "hover:border-foreground hover:shadow-lg hover:shadow-foreground/10 hover:scale-[1.02] cursor-pointer" 
+                resource.available
+                  ? "hover:border-foreground hover:shadow-lg hover:shadow-foreground/10 hover:scale-[1.02] cursor-pointer"
                   : "opacity-60 cursor-not-allowed"
               }`}
               style={{ transform: `rotate(${index % 2 === 0 ? '-0.3' : '0.3'}deg)` }}
@@ -112,8 +113,8 @@ export function ResourcesSection() {
                   <resource.icon className="h-6 w-6 text-foreground" />
                 </div>
                 <span className={`text-xs font-bold px-3 py-1.5 ${
-                  resource.available 
-                    ? "bg-primary/10 text-primary border border-primary/20" 
+                  resource.available
+                    ? "bg-primary/10 text-primary border border-primary/20"
                     : "bg-muted text-muted-foreground"
                 }`}>
                   {resource.tag}
@@ -147,36 +148,38 @@ export function ResourcesSection() {
         </div>
 
         {/* CTA with personality */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-12 text-center"
-        >
-          {user ? (
-            <Button size="lg" variant="default" className="btn-punch hover:scale-[1.02] active:scale-[0.98]" asChild>
-              <a href="/#branches">
+        {showCta && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 text-center"
+          >
+            {user ? (
+              <Button size="lg" variant="default" className="btn-punch hover:scale-[1.02] active:scale-[0.98]" asChild>
+                <a href={branchHref}>
+                  <Sparkles className="h-4 w-4" />
+                  Explore All Resources
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                variant="default"
+                className="btn-punch hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => setShowLoginModal(true)}
+              >
                 <Sparkles className="h-4 w-4" />
                 Explore All Resources
                 <ArrowRight className="h-4 w-4" />
-              </a>
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              variant="default"
-              className="btn-punch hover:scale-[1.02] active:scale-[0.98]"
-              onClick={() => setShowLoginModal(true)}
-            >
-              <Sparkles className="h-4 w-4" />
-              Explore All Resources
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          )}
-          <p className="text-sm text-muted-foreground mt-4">
-            Login to browse and download.
-          </p>
-        </motion.div>
+              </Button>
+            )}
+            <p className="text-sm text-muted-foreground mt-4">
+              Login to browse and download.
+            </p>
+          </motion.div>
+        )}
       </div>
 
       <LoginRequiredModal

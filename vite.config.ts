@@ -231,6 +231,46 @@ function devApiPlugin() {
           return;
         }
 
+        // POST /api/interview/submit – full interview evaluation
+        if (req.method === "POST" && pathname === "/api/interview/submit") {
+          const chunks = [];
+          req.on("data", (chunk) => chunks.push(chunk));
+          req.on("error", () => {
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Request body error" }));
+            }
+          });
+          req.on("end", () => {
+            let body = "";
+            try {
+              body = Buffer.concat(chunks).toString("utf8") || "{}";
+            } catch {
+              body = "{}";
+            }
+            (async () => {
+              try {
+                const { handleInterviewSubmit } = await import("./server/interview.mjs");
+                const out = await handleInterviewSubmit(body);
+                if (!res.headersSent) {
+                  res.statusCode = out.statusCode;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(out.body);
+                }
+              } catch (e) {
+                console.error("[api/interview/submit]", e);
+                if (!res.headersSent) {
+                  res.statusCode = 500;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ error: "Interview submit failed." }));
+                }
+              }
+            })();
+          });
+          return;
+        }
+
         next();
       };
       // Run after other middlewares so we can prepend and run before proxy
@@ -251,6 +291,10 @@ export default defineConfig(() => ({
     },
     proxy: {
       "/api": "http://localhost:3001",
+      "/socket.io": {
+        target: "http://localhost:3001",
+        ws: true,
+      },
     },
   },
   plugins: [devApiPlugin(), react()],

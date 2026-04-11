@@ -45,11 +45,17 @@ export function getUserSummary(userId) {
   const scores = data.scores;
   const averageScore = calcAverage(scores);
   const recentScores = scores.slice(-5).map((s) => s.score);
+  const assessmentScores = scores.filter((s) => String(s.type || "").startsWith("assessment")).map((s) => s.score);
+  const recentAssessmentScores = assessmentScores.slice(-5);
+  const assessmentAverage = calcAverage(scores.filter((s) => String(s.type || "").startsWith("assessment")));
   return {
     averageScore,
     recentScores,
     totalAttempts: scores.length,
     readiness: readinessFromScore(averageScore),
+    assessmentAverage,
+    recentAssessmentScores,
+    assessmentAttempts: assessmentScores.length,
   };
 }
 

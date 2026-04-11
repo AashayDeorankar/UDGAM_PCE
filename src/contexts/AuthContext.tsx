@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import type { User } from "firebase/auth";
 import {
   onAuthStateChanged,
@@ -38,7 +38,7 @@ interface AuthContextType {
     role: "student" | "alumni",
     profile?: Record<string, string>
   ) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, role?: "student" | "alumni") => Promise<{ error: Error | null }>;
   signInWithGoogle: (
     role: "student" | "alumni",
     profile?: Record<string, string>
@@ -54,30 +54,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [redirectError, setRedirectError] = useState<Error | null>(null);
   const [role, setRole] = useState<"student" | "alumni" | null>(null);
+  const roleRef = useRef<"student" | "alumni" | null>(null);
   const auth = getFirebaseAuth();
   const db = getFirestoreDb();
+  const pendingRoleKey = "techprep.pendingRole";
+  const storedRoleKey = "techprep.selectedRole";
 
   const ensureProfile = async (
     firebaseUser: User,
     preferredRole?: "student" | "alumni",
     profile?: Record<string, string>
   ) => {
-    const ref = doc(db, "users", firebaseUser.uid);
-    const snap = await getDoc(ref);
+    const userRef = doc(db, "users", firebaseUser.uid);
+    const alumniRef = doc(db, "alumni", firebaseUser.uid);
+    const studentRef = doc(db, "students", firebaseUser.uid);
+    const snap = await getDoc(userRef);
+    let resolvedRole = preferredRole || "student";
+    if (!preferredRole) {
+      const alumniSnap = await getDoc(alumniRef);
+      if (alumniSnap.exists()) {
+        resolvedRole = "alumni";
+      } else {
+        const studentSnap = await getDoc(studentRef);
+        if (studentSnap.exists()) {
+          resolvedRole = "student";
+        }
+      }
+    }
+
     if (!snap.exists()) {
-      const roleToSet = preferredRole || "student";
-      await setDoc(ref, {
+      await setDoc(userRef, {
         email: firebaseUser.email || "",
-        role: roleToSet,
+        role: resolvedRole,
         ...(profile || {}),
         createdAt: serverTimestamp(),
       });
-      setRole(roleToSet);
+      await setDoc(
+        resolvedRole === "alumni" ? alumniRef : studentRef,
+        {
+          email: firebaseUser.email || "",
+          role: resolvedRole,
+          ...(profile || {}),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      setRole(resolvedRole);
       return;
     }
+
     const data = snap.data() as { role?: "student" | "alumni" };
-    setRole(data?.role || "student");
+    const currentRole = data?.role || "student";
+    const roleToSet = preferredRole || resolvedRole || currentRole;
+    if (roleToSet !== currentRole || profile) {
+      await setDoc(
+        userRef,
+        {
+          role: roleToSet,
+          ...(profile || {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      await setDoc(
+        roleToSet === "alumni" ? alumniRef : studentRef,
+        {
+          email: firebaseUser.email || "",
+          role: roleToSet,
+          ...(profile || {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+    setRole(roleToSet);
   };
+
+  useEffect(() => {
+    roleRef.current = role;
+  }, [role]);
 
   useEffect(() => {
     setPersistence(auth, browserLocalPersistence).catch(() => {});
@@ -87,7 +142,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (nullTimeoutId) clearTimeout(nullTimeoutId);
         nullTimeoutId = null;
         setUser(firebaseUser);
-        ensureProfile(firebaseUser).catch(() => setRole(null));
+        let preferredRole: "student" | "alumni" | undefined;
+        try {
+          const raw = window.sessionStorage.getItem(pendingRoleKey);
+          if (raw === "student" || raw === "alumni") preferredRole = raw;
+          if (preferredRole) window.sessionStorage.removeItem(pendingRoleKey);
+        } catch (_) {
+          // ignore
+        }
+        if (!preferredRole) {
+          try {
+            const stored = window.localStorage.getItem(storedRoleKey);
+            if (stored === "student" || stored === "alumni") preferredRole = stored;
+          } catch (_) {
+            // ignore
+          }
+        }
+        if (preferredRole) {
+          setRole(preferredRole);
+        }
+        const roleHint = preferredRole || roleRef.current || undefined;
+        ensureProfile(firebaseUser, roleHint).catch(() => setRole(null));
         setLoading(false);
         return;
       }
@@ -122,9 +197,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, preferredRole?: "student" | "alumni") => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (preferredRole) {
+        try {
+          window.sessionStorage.setItem(pendingRoleKey, preferredRole);
+        } catch (_) {
+          // ignore
+        }
+        try {
+          window.localStorage.setItem(storedRoleKey, preferredRole);
+        } catch (_) {
+          // ignore
+        }
+        setRole(preferredRole);
+      }
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      if (preferredRole) {
+        await ensureProfile(cred.user, preferredRole);
+      }
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -136,6 +227,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile?: Record<string, string>
   ) => {
     try {
+      try {
+        window.sessionStorage.setItem(pendingRoleKey, preferredRole);
+      } catch (_) {
+        // ignore
+      }
+      try {
+        window.localStorage.setItem(storedRoleKey, preferredRole);
+      } catch (_) {
+        // ignore
+      }
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       await ensureProfile(cred.user, preferredRole, profile);

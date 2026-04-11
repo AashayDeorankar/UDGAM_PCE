@@ -58,6 +58,16 @@ function MaterialCard({
     if (viewLoading) return;
     setViewLoading(true);
     try {
+      if (item.url.startsWith("/")) {
+        const token = `n${Date.now()}`;
+        localStorage.setItem(
+          `noteView_${token}`,
+          JSON.stringify({ url: item.url, title: item.name, subject: item.subject || "" })
+        );
+        window.open(`/view?pending=${token}`, "_blank", "noopener,noreferrer");
+        setViewLoading(false);
+        return;
+      }
       const res = await fetch(`${getApiBase()}/api/presign?url=${encodeURIComponent(item.url)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
@@ -94,6 +104,18 @@ function MaterialCard({
     if (loading) return;
     setLoading(true);
     try {
+      if (item.url.startsWith("/")) {
+        const a = document.createElement("a");
+        a.href = item.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.download = item.name + ".pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setLoading(false);
+        return;
+      }
       const res = await fetch(`${getApiBase()}/api/presign?url=${encodeURIComponent(item.url)}`);
       const data = await res.json().catch(() => ({}));
       const targetUrl = res.ok && data.url ? data.url : res.ok ? item.url : null;

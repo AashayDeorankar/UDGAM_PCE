@@ -204,7 +204,7 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(email, password, role);
         if (error) {
           const code = (error as { code?: string }).code;
           if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
@@ -413,7 +413,14 @@ export default function Auth() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setRole("student")}
+                    onClick={() => {
+                      setRole("student");
+                      try {
+                        window.localStorage.setItem("techprep.selectedRole", "student");
+                      } catch (_) {
+                        // ignore
+                      }
+                    }}
                     className={`h-10 rounded-md border text-sm font-medium transition-colors ${
                       role === "student"
                         ? "bg-foreground text-background border-foreground"
@@ -424,7 +431,14 @@ export default function Auth() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRole("alumni")}
+                    onClick={() => {
+                      setRole("alumni");
+                      try {
+                        window.localStorage.setItem("techprep.selectedRole", "alumni");
+                      } catch (_) {
+                        // ignore
+                      }
+                    }}
                     className={`h-10 rounded-md border text-sm font-medium transition-colors ${
                       role === "alumni"
                         ? "bg-foreground text-background border-foreground"
