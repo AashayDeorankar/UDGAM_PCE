@@ -30,7 +30,7 @@ const alumniLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, signOut, loading, role } = useAuth();
+  const { user, signOut, loading, isAdmin, role } = useAuth();
   const navigate = useNavigate();
   const db = getFirestoreDb();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -68,7 +68,7 @@ export function Navbar() {
 
   useEffect(() => {
     if (!profileMenuOpen) return;
-    const onClick = (event: globalThis.MouseEvent) => {
+    const onClick = (event: Event) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest("[data-profile-menu]")) {
         setProfileMenuOpen(false);
@@ -117,7 +117,7 @@ export function Navbar() {
     >
       {/* Floating Pill Navbar */}
       <nav
-        className={`relative flex items-center justify-between gap-2 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full transition-all duration-300 overflow-visible ${
+        className={`relative flex items-center justify-between gap-2 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full transition-all duration-300 overflow-hidden ${
           scrolled
             ? "bg-background/95 backdrop-blur-md shadow-lg shadow-foreground/5"
             : "bg-background/90 backdrop-blur-sm shadow-md shadow-foreground/5"
@@ -133,7 +133,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Navigation - Center */}
-        <div className="hidden md:flex items-center gap-2 px-2 min-w-0 flex-1 justify-center">
+        <div className="hidden lg:flex items-center gap-1 px-2 min-w-0 flex-1 justify-center">
           {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
             const isHashLink = link.href.startsWith("/#");
             const isPageLink = link.href.startsWith("/") && !isHashLink;
@@ -193,6 +193,16 @@ export function Navbar() {
           >
             <div className="bg-background/95 backdrop-blur-md rounded-2xl shadow-lg shadow-foreground/5 border border-border/50 p-4 max-w-4xl mx-auto">
               <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  className="px-4 py-3 text-primary hover:text-primary/80 hover:bg-muted/50 rounded-xl transition-colors text-left"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setUpgradeModalOpen(true);
+                  }}
+                >
+                  Upgrade
+                </button>
                 {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
                   const isHashLink = link.href.startsWith("/#");
                   const isPageLink = link.href.startsWith("/") && !isHashLink;
