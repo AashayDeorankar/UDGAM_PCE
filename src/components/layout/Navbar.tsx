@@ -26,7 +26,7 @@ const alumniLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, signOut, loading, isAdmin, role } = useAuth();
+  const { user, signOut, loading, role } = useAuth();
   const navigate = useNavigate();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const navLinks = role === "alumni" ? alumniLinks : studentLinks;
@@ -39,7 +39,7 @@ export function Navbar() {
 
   useEffect(() => {
     if (!profileMenuOpen) return;
-    const onClick = (event: Event) => {
+    const onClick = (event: globalThis.MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest("[data-profile-menu]")) {
         setProfileMenuOpen(false);
@@ -88,7 +88,7 @@ export function Navbar() {
     >
       {/* Floating Pill Navbar */}
       <nav
-        className={`relative flex items-center justify-between gap-2 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full transition-all duration-300 overflow-hidden ${
+        className={`relative flex items-center justify-between gap-2 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full transition-all duration-300 overflow-visible ${
           scrolled
             ? "bg-background/95 backdrop-blur-md shadow-lg shadow-foreground/5"
             : "bg-background/90 backdrop-blur-sm shadow-md shadow-foreground/5"
@@ -105,7 +105,7 @@ export function Navbar() {
 
         {/* Desktop Navigation - Center */}
         <div className="hidden md:flex items-center gap-2 px-2 min-w-0 flex-1 justify-center">
-          {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
+          {navLinks.map((link) => {
             const isHashLink = link.href.startsWith("/#");
             const isPageLink = link.href.startsWith("/") && !isHashLink;
             const linkClass = "px-2 py-1 text-sm text-muted-foreground hover:text-primary link-underline transition-all duration-200 whitespace-nowrap";
@@ -157,7 +157,7 @@ export function Navbar() {
           >
             <div className="bg-background/95 backdrop-blur-md rounded-2xl shadow-lg shadow-foreground/5 border border-border/50 p-4 max-w-4xl mx-auto">
               <div className="flex flex-col gap-1">
-                {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
+                {navLinks.map((link) => {
                   const isHashLink = link.href.startsWith("/#");
                   const isPageLink = link.href.startsWith("/") && !isHashLink;
                   const linkClass = "px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-colors whitespace-nowrap";

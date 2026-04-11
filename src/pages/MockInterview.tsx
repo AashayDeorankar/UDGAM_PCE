@@ -37,7 +37,15 @@ export default function MockInterview() {
   const [mockSessionId, setMockSessionId] = useState<string | null>(null);
   const [mockConfidence, setMockConfidence] = useState<string | null>(null);
   const lastQuestionAtRef = useRef<number | null>(null);
-  const [analytics, setAnalytics] = useState<{ averageScore: number; recentScores: number[]; readiness: string; totalAttempts: number } | null>(null);
+  const [analytics, setAnalytics] = useState<{
+    averageScore: number;
+    recentScores: number[];
+    readiness: string;
+    totalAttempts: number;
+    assessmentAverage?: number;
+    recentAssessmentScores?: number[];
+    assessmentAttempts?: number;
+  } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useLayoutEffect(() => {
@@ -279,6 +287,16 @@ export default function MockInterview() {
                   <p>
                     <span className="font-medium text-foreground">Recent scores:</span> {analytics.recentScores.length ? analytics.recentScores.join(", ") : "No attempts yet"}
                   </p>
+                  {typeof analytics.assessmentAverage === "number" && (
+                    <p>
+                      <span className="font-medium text-foreground">Assessment avg:</span> {analytics.assessmentAverage}/100
+                    </p>
+                  )}
+                  {analytics.recentAssessmentScores?.length ? (
+                    <p>
+                      <span className="font-medium text-foreground">Recent assessments:</span> {analytics.recentAssessmentScores.join(", ")}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {!analyticsLoading && !analytics && (

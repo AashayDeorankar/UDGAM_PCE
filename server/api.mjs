@@ -47,7 +47,12 @@ const { handleChat } = await import("./chat.mjs");
 const { handleBookSession } = await import("./book-session.mjs");
 const { handleRunCode } = await import("./run-code.mjs");
 const { handleMatchmaking } = await import("./matchmaking.mjs");
-const { handleInterviewStart, handleInterviewMessage, handleInterviewQuestions } = await import("./interview.mjs");
+const {
+  handleInterviewStart,
+  handleInterviewMessage,
+  handleInterviewQuestions,
+  handleInterviewEvaluate,
+} = await import("./interview.mjs");
 const { handleFeedback } = await import("./feedback.mjs");
 const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
 const { setupSocketServer } = await import("./socket.mjs");
@@ -224,6 +229,23 @@ const server = http.createServer(async (req, res) => {
       res.end(out.body);
     } catch (err) {
       console.error("[interview/questions]", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err?.message || err) }));
+    }
+    return;
+  }
+
+  // POST /api/interview/evaluate – evaluate assessment answers
+  if (pathname === "/api/interview/evaluate" && (req.method || "").toUpperCase() === "POST") {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString("utf8") || "{}";
+    try {
+      const out = await handleInterviewEvaluate(body);
+      res.writeHead(out.statusCode, { "Content-Type": "application/json" });
+      res.end(out.body);
+    } catch (err) {
+      console.error("[interview/evaluate]", err);
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: String(err?.message || err) }));
     }
