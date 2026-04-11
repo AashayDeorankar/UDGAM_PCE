@@ -13,17 +13,18 @@ import BranchMaterials from "./pages/BranchMaterials";
 import Mentors from "./pages/Mentors";
 import NoteViewPage from "./pages/NoteViewPage";
 import InterviewPrep from "./pages/InterviewPrep";
-import MockInterview from "./pages/MockInterview";
+import MockInterview from "./pages/MockInterview.tsx";
 import InterviewPrepQuestions from "./pages/InterviewPrepQuestions";
 import DsaPracticePage from "./pages/DsaPracticePage";
 import SqlPracticePage from "./pages/SqlPracticePage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import ResourcesPage from "./pages/ResourcesPage";
-import AlumniConnect from "./pages/AlumniConnect";
-import AlumniInbox from "./pages/AlumniInbox";
+import AlumniConnect from "./pages/AlumniConnect.tsx";
+import AlumniInbox from "./pages/AlumniInbox.tsx";
 import UploadPage from "./pages/UploadPage";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
+import RequestsPage from "./pages/RequestsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,7 +83,9 @@ const App = () => (
             <Route path="/mock-interview" element={<ProtectedRoute><MockInterview /></ProtectedRoute>} />
             <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistantPage /></ProtectedRoute>} />
             <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
+            <Route path="/connect" element={<ProtectedRoute><AlumniConnect /></ProtectedRoute>} />
             <Route path="/alumni/connect" element={<ProtectedRoute><AlumniConnect /></ProtectedRoute>} />
+            <Route path="/inbox" element={<ProtectedRoute><AlumniInbox /></ProtectedRoute>} />
             <Route path="/alumni/inbox" element={<ProtectedRoute><AlumniInbox /></ProtectedRoute>} />
             <Route path="/interview-prep/:company/dsa/practice/:questionIndex" element={<ProtectedRoute><DsaPracticePage /></ProtectedRoute>} />
             <Route path="/interview-prep/:company/sql/practice/:questionIndex" element={<ProtectedRoute><SqlPracticePage /></ProtectedRoute>} />
@@ -90,6 +93,7 @@ const App = () => (
             <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/requests" element={<ProtectedRoute><RequestsPage /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

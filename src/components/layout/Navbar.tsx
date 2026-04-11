@@ -1,4 +1,4 @@
-import { useState, useEffect, type MouseEvent } from "react";
+import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowRight, LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import logoImage from "@/assets/logo.png";
 
 const studentLinks = [
+  { name: "Connect", href: "/connect" },
   { name: "Resources", href: "/#branches" },
   { name: "Interview Prep", href: "/interview-prep" },
   { name: "AI Mock Interview", href: "/mock-interview" },
@@ -16,7 +17,7 @@ const studentLinks = [
 ];
 
 const alumniLinks = [
-  { name: "Connect", href: "/alumni/connect" },
+  { name: "Connect", href: "/connect" },
   { name: "Inbox", href: "/alumni/inbox" },
   { name: "AI Assistant", href: "/ai-assistant" },
   { name: "Resources", href: "/resources" },
@@ -38,7 +39,7 @@ export function Navbar() {
 
   useEffect(() => {
     if (!profileMenuOpen) return;
-    const onClick = (event: MouseEvent) => {
+    const onClick = (event: Event) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest("[data-profile-menu]")) {
         setProfileMenuOpen(false);
@@ -57,7 +58,7 @@ export function Navbar() {
     setIsOpen(false);
   };
 
-  const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleNavClick = (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
     event.preventDefault();
     const [path, hash] = href.split("#");
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -212,6 +213,16 @@ export function Navbar() {
                     <Button
                       className="w-full rounded-full"
                       variant="outline"
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate("/requests");
+                      }}
+                    >
+                      Requests
+                    </Button>
+                    <Button
+                      className="w-full rounded-full"
+                      variant="outline"
                       onClick={handleSignOut}
                     >
                       <LogOut className="h-4 w-4" />
@@ -293,6 +304,16 @@ export function Navbar() {
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
               >
                 Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate("/requests");
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
+              >
+                Requests
               </button>
               <button
                 type="button"

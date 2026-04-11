@@ -50,6 +50,7 @@ const { handleMatchmaking } = await import("./matchmaking.mjs");
 const { handleInterviewStart, handleInterviewMessage, handleInterviewQuestions } = await import("./interview.mjs");
 const { handleFeedback } = await import("./feedback.mjs");
 const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
+const { setupSocketServer } = await import("./socket.mjs");
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -313,6 +314,8 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ error: "Not found" }));
 });
+
+setupSocketServer(server);
 
 server.listen(PORT, () => {
   console.log(`API: http://localhost:${PORT} (presign + chat + book-session)`);
