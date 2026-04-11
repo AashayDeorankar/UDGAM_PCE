@@ -111,6 +111,7 @@ function groupByCategory(docs: FirestoreResource[]): BranchMaterialsData {
 export async function loadBranchResourcesFromFirestore(
   branchCode: string
 ): Promise<BranchMaterialsData | null> {
+  let docs: FirestoreResource[] = [];
   try {
     const db = getFirestoreDb();
     const firestoreBranch =
@@ -124,34 +125,72 @@ export async function loadBranchResourcesFromFirestore(
     );
 
     const snapshot = await getDocs(q);
-    const docs: FirestoreResource[] = [];
-
     snapshot.forEach((docSnap) => {
       docs.push({
         id: docSnap.id,
         ...(docSnap.data() as Omit<FirestoreResource, "id">),
       });
     });
-
-    if (docs.length === 0) return null;
-
-    // Sort by timestamp descending (newest first), client-side to avoid composite index
-    docs.sort((a, b) => {
-      const getTime = (t: FirestoreResource["timestamp"]) => {
-        if (!t) return 0;
-        const d = typeof (t as { toDate?: () => Date }).toDate === "function"
-          ? (t as { toDate: () => Date }).toDate()
-          : new Date(t as unknown as string);
-        return d.getTime();
-      };
-      return getTime(b.timestamp) - getTime(a.timestamp);
-    });
-
-    return groupByCategory(docs);
   } catch (err) {
     console.error("[Firestore] loadBranchResources error:", err);
-    return null;
   }
+
+  // Remove the null check so we can inject mock data for all branches
+  // if (docs.length === 0 && branchCode !== "CSE") return null;
+
+  // Sort by timestamp descending (newest first), client-side to avoid composite index
+  docs.sort((a, b) => {
+    const getTime = (t: FirestoreResource["timestamp"]) => {
+      if (!t) return 0;
+      const d = typeof (t as { toDate?: () => Date }).toDate === "function"
+        ? (t as { toDate: () => Date }).toDate()
+        : new Date(t as unknown as string);
+      return d.getTime();
+    };
+    return getTime(b.timestamp) - getTime(a.timestamp);
+  });
+
+  const grouped = groupByCategory(docs);
+  
+  if (branchCode === "CSE") {
+    grouped.handwrittenNotes.unshift(
+      { name: "C++ Notes", url: "/cse_materials/C++ C plus plus.pdf", subject: "C++", credit: "User", date: "4/12/2026" },
+      { name: "DSA Notes", url: "/cse_materials/DSA NOTES.pdf", subject: "DSA", credit: "User", date: "4/12/2026" },
+      { name: "Java Notes", url: "/cse_materials/Java.pdf", subject: "Java", credit: "User", date: "4/12/2026" },
+      { name: "Operating System Notes", url: "/cse_materials/Operating System.pdf", subject: "OS", credit: "User", date: "4/12/2026" },
+      { name: "Python Notes", url: "/cse_materials/Python Notes.pdf", subject: "Python", credit: "User", date: "4/12/2026" }
+    );
+
+    grouped.ppt.unshift(
+      { name: "Advanced Java Concepts PPT", url: "/cse_materials/Java.pdf", subject: "Java", credit: "Dr. Smith", date: "3/15/2026" },
+      { name: "OS Memory Management Slides", url: "/cse_materials/Operating System.pdf", subject: "OS", credit: "Prof. Alan", date: "3/10/2026" },
+      { name: "Intro to Algorithms", url: "/cse_materials/DSA NOTES.pdf", subject: "DSA", credit: "Dr. Lin", date: "2/20/2026" }
+    );
+
+    grouped.prevYearPapers.unshift(
+      { name: "2025 Python Final Exam", url: "/cse_materials/Python Notes.pdf", subject: "Python", credit: "Exam Dept", date: "12/15/2025" },
+      { name: "2024 OS Midterm Paper", url: "/cse_materials/Operating System.pdf", subject: "OS", credit: "Exam Dept", date: "10/05/2024" },
+      { name: "2023 C++ Programming Paper", url: "/cse_materials/C++ C plus plus.pdf", subject: "C++", credit: "Exam Dept", date: "05/10/2023" }
+    );
+  } else {
+    grouped.handwrittenNotes.unshift(
+      { name: `Fundamentals of ${branchCode}`, url: "/cse_materials/C++ C plus plus.pdf", subject: "Core Concept", credit: "Guest", date: "4/12/2026" },
+      { name: `${branchCode} Advanced Principles`, url: "/cse_materials/Java.pdf", subject: "Advanced", credit: "Guest", date: "4/12/2026" },
+      { name: `Applied Practice ${branchCode}`, url: "/cse_materials/DSA NOTES.pdf", subject: "Practice", credit: "Guest", date: "4/12/2026" }
+    );
+    grouped.ppt.unshift(
+      { name: `Introduction Lecture - ${branchCode}`, url: "/cse_materials/Operating System.pdf", subject: "Basics", credit: "Faculty", date: "3/10/2026" },
+      { name: `Seminar on ${branchCode}`, url: "/cse_materials/Python Notes.pdf", subject: "Seminar", credit: "Faculty", date: "3/15/2026" },
+      { name: `Case Study ${branchCode}`, url: "/cse_materials/DSA NOTES.pdf", subject: "Case Study", credit: "Faculty", date: "3/20/2026" }
+    );
+    grouped.prevYearPapers.unshift(
+      { name: `2025 Regular Exam ${branchCode}`, url: "/cse_materials/Java.pdf", subject: "Exams", credit: "Exam Dept", date: "01/05/2025" },
+      { name: `2024 Midterm ${branchCode}`, url: "/cse_materials/C++ C plus plus.pdf", subject: "Exams", credit: "Exam Dept", date: "09/10/2024" },
+      { name: `2023 Finals ${branchCode}`, url: "/cse_materials/Operating System.pdf", subject: "Exams", credit: "Exam Dept", date: "12/20/2023" }
+    );
+  }
+
+  return grouped;
 }
 
 export interface AddResourceInput {
