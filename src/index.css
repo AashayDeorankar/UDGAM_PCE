@@ -1,0 +1,344 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Caveat:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 9% 98%;
+    --foreground: 20 14% 8%;
+
+    --card: 60 9% 100%;
+    --card-foreground: 20 14% 8%;
+
+    --popover: 60 9% 100%;
+    --popover-foreground: 20 14% 8%;
+
+    --primary: 158 64% 32%;
+    --primary-foreground: 60 9% 98%;
+
+    --secondary: 60 5% 94%;
+    --secondary-foreground: 20 14% 8%;
+
+    --muted: 60 5% 94%;
+    --muted-foreground: 20 8% 45%;
+
+    --accent: 24 95% 53%;
+    --accent-foreground: 60 9% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 60 9% 98%;
+
+    --border: 20 6% 90%;
+    --input: 20 6% 90%;
+    --ring: 158 64% 32%;
+
+    --radius: 0.5rem;
+
+    --shadow-color: 20 6% 50%;
+  }
+
+  .dark {
+    --background: 20 14% 6%;
+    --foreground: 60 9% 96%;
+
+    --card: 20 12% 9%;
+    --card-foreground: 60 9% 96%;
+
+    --popover: 20 12% 9%;
+    --popover-foreground: 60 9% 96%;
+
+    --primary: 158 60% 45%;
+    --primary-foreground: 20 14% 6%;
+
+    --secondary: 20 10% 14%;
+    --secondary-foreground: 60 9% 96%;
+
+    --muted: 20 10% 14%;
+    --muted-foreground: 60 5% 60%;
+
+    --accent: 24 90% 58%;
+    --accent-foreground: 20 14% 6%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 60 9% 98%;
+
+    --border: 20 10% 18%;
+    --input: 20 10% 18%;
+    --ring: 158 60% 45%;
+
+    --shadow-color: 0 0% 0%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  [id="resources"],
+  [id="branches"],
+  [id="mentors"],
+  [id="ai-assistant"],
+  [id="about"] {
+    scroll-margin-top: 6rem;
+  }
+
+  /* Polish: smooth transitions on interactive elements */
+  a, button, [role="button"] {
+    @apply transition-colors duration-200;
+  }
+
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Instrument Sans', system-ui, sans-serif;
+    background-image: 
+      radial-gradient(ellipse 120% 80% at 50% -20%, hsl(var(--primary) / 0.04), transparent),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  /* Faadu selection & focus */
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Bricolage Grotesque', serif;
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer components {
+  .badge {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border rounded-full;
+  }
+
+  .badge-primary {
+    @apply bg-primary/10 text-primary border-primary/20;
+  }
+
+  .badge-accent {
+    @apply bg-accent/10 text-accent border-accent/20;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px -12px hsl(var(--shadow-color) / 0.15);
+  }
+
+  .link-underline {
+    @apply relative;
+  }
+
+  .link-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-[2px] bg-primary transition-all duration-300;
+  }
+
+  .link-underline:hover::after {
+    @apply w-full;
+  }
+
+  .section-padding {
+    @apply py-20 md:py-28 lg:py-32;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Handcrafted sticker/tag styles */
+  .sticker {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wide;
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    transform: rotate(-2deg);
+    box-shadow: 2px 2px 0 hsl(var(--foreground));
+  }
+
+  .sticker-green {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    transform: rotate(1deg);
+  }
+
+  .sticker-green-soft {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wide;
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(var(--primary));
+    border: 2px solid hsl(var(--primary) / 0.4);
+    transform: rotate(1deg);
+  }
+
+  .sticker-outline {
+    @apply bg-background border-2 border-foreground;
+    color: hsl(var(--foreground));
+    transform: rotate(-1deg);
+    box-shadow: 2px 2px 0 hsl(var(--foreground));
+  }
+
+  /* Handwritten style underline */
+  .underline-sketch {
+    position: relative;
+    display: inline;
+  }
+
+  .underline-sketch::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12'%3E%3Cpath d='M2 8 Q 25 2, 50 8 T 98 8' stroke='%23f97316' fill='none' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+    background-size: 100% 100%;
+  }
+
+  /* Paper/card with torn edge effect */
+  .paper-card {
+    @apply bg-card border-2 border-foreground p-6;
+    box-shadow: 4px 4px 0 hsl(var(--foreground));
+  }
+
+  .paper-card:hover {
+    box-shadow: 6px 6px 0 hsl(var(--foreground));
+    transform: translate(-2px, -2px);
+  }
+
+  /* Faadu CTA – same punch across site */
+  .btn-punch {
+    box-shadow: 4px 4px 0 hsl(var(--foreground));
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .btn-punch:hover {
+    box-shadow: 2px 2px 0 hsl(var(--foreground));
+    transform: translate(2px, 2px);
+  }
+  .btn-punch:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* Scribble circle highlight */
+  .highlight-circle {
+    position: relative;
+  }
+
+  .highlight-circle::before {
+    content: '';
+    position: absolute;
+    inset: -8px -12px;
+    border: 3px solid hsl(var(--primary));
+    border-radius: 50% 45% 55% 48%;
+    transform: rotate(-2deg);
+  }
+
+  /* Tape effect */
+  .tape {
+    position: relative;
+  }
+
+  .tape::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 80px;
+    height: 24px;
+    background: hsl(60 80% 85% / 0.8);
+    border: 1px solid hsl(60 30% 70%);
+  }
+
+  .handwritten {
+    font-family: 'Caveat', cursive;
+  }
+
+  .scrap-card {
+    @apply bg-card border-2 border-foreground;
+    box-shadow: 3px 3px 0 hsl(var(--foreground));
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-accent;
+  }
+
+  .border-subtle {
+    @apply border border-border/60;
+  }
+
+  .bg-dots {
+    background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .bg-grid {
+    background-image: 
+      linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .noise {
+    position: relative;
+  }
+
+  .noise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  .marquee {
+    width: max-content;
+    animation: marquee 35s linear infinite;
+    will-change: transform;
+  }
+
+  .marquee:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+}

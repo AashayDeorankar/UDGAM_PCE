@@ -1,0 +1,3 @@
+# Allow Google Sign-In popup (fixes "COOP would block window.closed" error)
+/*
+  Cross-Origin-Opener-Policy: same-origin-allow-popups

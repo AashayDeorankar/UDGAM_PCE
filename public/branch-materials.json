@@ -1,0 +1,50 @@
+{
+  "CSE": {
+    "handwrittenNotes": [
+      { "name": "Unit 1 Notes", "url": "https://YOUR-BUCKET.s3.ap-south-1.amazonaws.com/CSE/notes/unit1.pdf", "label": "Unit 1" },
+      { "name": "Unit 2 Notes", "url": "https://YOUR-BUCKET.s3.ap-south-1.amazonaws.com/CSE/notes/unit2.pdf", "label": "Unit 2" }
+    ],
+    "ppt": [
+      { "name": "Unit 1 PPT", "url": "https://YOUR-BUCKET.s3.ap-south-1.amazonaws.com/CSE/ppt/unit1.pptx", "label": "Unit 1" }
+    ],
+    "prevYearPapers": [
+      { "name": "2024 Paper", "url": "https://YOUR-BUCKET.s3.ap-south-1.amazonaws.com/CSE/papers/2024.pdf", "label": "2024" },
+      { "name": "2023 Paper", "url": "https://YOUR-BUCKET.s3.ap-south-1.amazonaws.com/CSE/papers/2023.pdf", "label": "2023" }
+    ]
+  },
+  "ECE": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  },
+  "EE": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  },
+  "ME": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  },
+  "CE": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  },
+  "DS": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  },
+  "CS": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  },
+  "AI/ML": {
+    "handwrittenNotes": [],
+    "ppt": [],
+    "prevYearPapers": []
+  }
+}
