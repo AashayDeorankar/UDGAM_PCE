@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Dialog,
@@ -28,6 +28,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getApiBase } from "@/lib/api-base";
+import { useAuth } from "@/contexts/AuthContext";
+import { getFirestoreDb } from "@/integrations/firebase/config";
+import { doc, getDoc } from "firebase/firestore";
+import {
+  FREE_ALUMNI_SESSION_LIMIT,
+  type MembershipTier,
+  canBookMentor,
+  isPriorityTier,
+  normalizeMembershipTier,
+} from "@/lib/membership";
 
 const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Final Year / Passed Out"] as const;
 
@@ -52,32 +62,86 @@ type BookSessionModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mentorName: string;
+  mentorCategory?: "industry" | "alumni";
   /** Optional: mentor email – they receive the request too */
   mentorEmail?: string;
   /** Optional: mentor WhatsApp (E.164) – they receive the same message on WhatsApp */
   mentorWhatsapp?: string;
 };
 
-export function BookSessionModal({ open, onOpenChange, mentorName, mentorEmail, mentorWhatsapp }: BookSessionModalProps) {
+export function BookSessionModal({ open, onOpenChange, mentorName, mentorCategory = "industry", mentorEmail, mentorWhatsapp }: BookSessionModalProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [userTier, setUserTier] = useState<MembershipTier>("free");
+  const [alumniSessionsUsed, setAlumniSessionsUsed] = useState(0);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const db = getFirestoreDb();
   const form = useForm<BookSessionFormValues>({
     defaultValues: {
       name: "",
       year: "",
       phone: "",
-      email: "",
+      email: user?.email || "",
       reasonToConnect: "",
     },
   });
 
+  useEffect(() => {
+    if (!user) return;
+    form.setValue("email", user.email || "");
+  }, [form, user]);
+
+  useEffect(() => {
+    const loadMembership = async () => {
+      if (!open || !user) return;
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (!snap.exists()) {
+          setUserTier("free");
+          setAlumniSessionsUsed(0);
+          return;
+        }
+        const data = snap.data() as { membershipTier?: string; alumniSessionsUsed?: number };
+        setUserTier(normalizeMembershipTier(data.membershipTier));
+        setAlumniSessionsUsed(typeof data.alumniSessionsUsed === "number" ? data.alumniSessionsUsed : 0);
+      } catch {
+        setUserTier("free");
+        setAlumniSessionsUsed(0);
+      }
+    };
+    loadMembership();
+  }, [db, open, user]);
+
   async function onSubmit(values: BookSessionFormValues) {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to book a session.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const entitlement = canBookMentor(mentorCategory, userTier, alumniSessionsUsed);
+    if (!entitlement.allowed) {
+      toast({
+        title: "Upgrade required",
+        description: entitlement.reason,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const apiBase = getApiBase();
+      const idToken = await user.getIdToken();
       const res = await fetch(`${apiBase}/api/book-session`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           mentorName,
           mentorEmail: mentorEmail || undefined,
@@ -87,6 +151,7 @@ export function BookSessionModal({ open, onOpenChange, mentorName, mentorEmail, 
           phone: values.phone,
           email: values.email,
           reasonToConnect: values.reasonToConnect,
+          mentorCategory,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -100,11 +165,25 @@ export function BookSessionModal({ open, onOpenChange, mentorName, mentorEmail, 
         console.error("[Book Session] Server error:", res.status, msg);
         return;
       }
+
+      if (mentorCategory === "alumni" && userTier === "free") {
+        setAlumniSessionsUsed((v) => v + 1);
+      }
+
       toast({
         title: "Request sent",
-        description: "We’ll connect you with the mentor soon. Check your email for updates.",
+        description:
+          mentorCategory === "industry" && userTier === "free"
+            ? "Paid session request sent. Team will share payment and scheduling details on email."
+            : "We’ll connect you with the mentor soon. Check your email for updates.",
       });
-      form.reset();
+      form.reset({
+        name: "",
+        year: "",
+        phone: "",
+        email: user?.email || "",
+        reasonToConnect: "",
+      });
       onOpenChange(false);
     } finally {
       setSubmitting(false);
@@ -120,6 +199,19 @@ export function BookSessionModal({ open, onOpenChange, mentorName, mentorEmail, 
             Fill in your details and we’ll connect you with this mentor.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">Current Plan: {userTier.toUpperCase()}</p>
+          {mentorCategory === "alumni" && userTier === "free" && (
+            <p>
+              Free tier alumni usage: {alumniSessionsUsed}/{FREE_ALUMNI_SESSION_LIMIT}
+            </p>
+          )}
+          {mentorCategory === "industry" && userTier === "free" && (
+            <p>This is a paid industry mentor session for Free users.</p>
+          )}
+          {isPriorityTier(userTier) && <p>Platinum priority is automatically applied.</p>}
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

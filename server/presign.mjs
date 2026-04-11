@@ -124,3 +124,39 @@ export async function getUploadPresignedUrl(opts) {
   const fileUrl = `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
   return { uploadUrl, fileUrl };
 }
+
+/**
+ * Get presigned PUT URL for user profile image upload.
+ * @param {{ userId: string, fileName: string, contentType?: string }} opts
+ * @returns {Promise<{ uploadUrl: string, fileUrl: string }>}
+ */
+export async function getProfileUploadPresignedUrl(opts) {
+  loadEnv();
+  const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID || "";
+  const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY || "";
+  const AWS_REGION = process.env.AWS_REGION || "eu-north-1";
+  const S3_BUCKET = process.env.S3_BUCKET || "btech-verse";
+
+  if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
+    throw new Error("S3 credentials not configured");
+  }
+
+  const safeUserId = (opts.userId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeName = (opts.fileName || "profile.jpg").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const key = `profiles/${safeUserId}/${Date.now()}_${safeName}`;
+
+  const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+  const client = new S3Client({
+    region: AWS_REGION,
+    credentials: { accessKeyId: AWS_ACCESS_KEY_ID, secretAccessKey: AWS_SECRET_ACCESS_KEY },
+  });
+  const command = new PutObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: key,
+    ContentType: opts.contentType || "image/jpeg",
+  });
+  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
+  const fileUrl = `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+  return { uploadUrl, fileUrl };
+}

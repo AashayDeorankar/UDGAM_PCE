@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Calendar, Briefcase, Clock, ArrowRight } from "lucide-react";
@@ -9,6 +9,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { mentors as allMentors } from "@/data/mentors";
 import type { Mentor } from "@/data/mentors";
 import { getMentorImageUrl } from "@/lib/mentor-image";
+import { getFirestoreDb } from "@/integrations/firebase/config";
+import { doc, onSnapshot } from "firebase/firestore";
+import { type MembershipTier, getMentorPriceLabel, normalizeMembershipTier } from "@/lib/membership";
 
 const mentors = allMentors.slice(0, 4);
 
@@ -50,14 +53,38 @@ function MentorAvatar({ mentor }: { mentor: Mentor }) {
 
 export function MentorsSection() {
   const { user } = useAuth();
-  const [bookModalMentor, setBookModalMentor] = useState<string | null>(null);
+  const db = getFirestoreDb();
+  const [bookModalMentor, setBookModalMentor] = useState<Mentor | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [membershipTier, setMembershipTier] = useState<MembershipTier>("free");
+
+  useEffect(() => {
+    if (!user) {
+      setMembershipTier("free");
+      return;
+    }
+    const unsub = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        if (!snap.exists()) {
+          setMembershipTier("free");
+          return;
+        }
+        const data = snap.data() as { membershipTier?: string; alumniSessionsUsed?: number };
+        setMembershipTier(normalizeMembershipTier(data.membershipTier));
+      },
+      () => {
+        setMembershipTier("free");
+      },
+    );
+    return () => unsub();
+  }, [db, user]);
 
   return (
     <section id="mentors" className="section-padding pt-12 md:pt-16 lg:pt-20 pb-12 md:pb-16 lg:pb-20 bg-secondary/30 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-dots opacity-40" />
-      
+
       <div className="container relative">
         {/* Header */}
         <motion.div
@@ -87,7 +114,7 @@ export function MentorsSection() {
               transition={{ delay: index * 0.1 }}
               className="group"
             >
-              <div 
+              <div
                 className={`paper-card h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:shadow-foreground/10 hover:scale-[1.02] ${index === 0 ? 'tape' : ''}`}
                 style={{ transform: `rotate(${index % 2 === 0 ? -0.5 : 0.5}deg)` }}
               >
@@ -104,7 +131,7 @@ export function MentorsSection() {
                       Busy
                     </span>
                   )}
-                  <span className="text-lg font-bold text-primary">{mentor.price}</span>
+                  <span className="text-lg font-bold text-primary">{getMentorPriceLabel(mentor.category, membershipTier)}</span>
                 </div>
 
                 {/* Profile */}
@@ -141,7 +168,7 @@ export function MentorsSection() {
                     setShowLoginModal(true);
                     return;
                   }
-                  setBookModalMentor(mentor.name);
+                  setBookModalMentor(mentor);
                 }}
                 >
                   {mentor.available ? (
@@ -161,9 +188,10 @@ export function MentorsSection() {
         <BookSessionModal
           open={!!bookModalMentor}
           onOpenChange={(open) => !open && setBookModalMentor(null)}
-          mentorName={bookModalMentor ?? ""}
-          mentorEmail={allMentors.find((m) => m.name === bookModalMentor)?.email}
-          mentorWhatsapp={allMentors.find((m) => m.name === bookModalMentor)?.whatsapp}
+          mentorName={bookModalMentor?.name ?? ""}
+          mentorCategory={bookModalMentor?.category}
+          mentorEmail={bookModalMentor?.email}
+          mentorWhatsapp={bookModalMentor?.whatsapp}
         />
 
         <LoginRequiredModal

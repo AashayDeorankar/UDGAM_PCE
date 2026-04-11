@@ -44,3 +44,47 @@ export async function uploadResourceFile(
     };
   }
 }
+
+/**
+ * Upload user profile image to S3 via presigned PUT URL.
+ */
+export async function uploadProfileImage(
+  file: File,
+  idToken: string,
+): Promise<{ url: string } | { error: string }> {
+  try {
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/profile-upload-presign`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type || "image/jpeg",
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { error: (err as { error?: string }).error || res.statusText || "Failed to get upload URL" };
+    }
+    const { uploadUrl, fileUrl } = (await res.json()) as { uploadUrl: string; fileUrl: string };
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type || "image/jpeg",
+      },
+    });
+    if (!putRes.ok) {
+      return { error: `S3 upload failed: ${putRes.status} ${putRes.statusText}` };
+    }
+    return { url: fileUrl };
+  } catch (err) {
+    console.error("[Profile Upload] error:", err);
+    return {
+      error: err instanceof Error ? err.message : "Failed to upload profile image",
+    };
+  }
+}

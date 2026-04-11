@@ -1,30 +1,23 @@
 import { useState, useLayoutEffect, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Calendar, Briefcase, Clock, MessageCircle, Loader2 } from "lucide-react";
+import { Calendar, Briefcase, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BookSessionModal } from "@/components/BookSessionModal";
 import { mentors } from "@/data/mentors";
 import type { Mentor } from "@/data/mentors";
+import { useAuth } from "@/contexts/AuthContext";
 import { getMentorImageUrl } from "@/lib/mentor-image";
 import { getApiBase } from "@/lib/api-base";
-import { useAuth } from "@/contexts/AuthContext";
 import { getFirestoreDb } from "@/integrations/firebase/config";
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  setDoc,
-  serverTimestamp,
-  onSnapshot,
-  orderBy,
-  addDoc,
-} from "firebase/firestore";
+  type MembershipTier,
+  canBookMentor,
+  getMentorPriceLabel,
+  normalizeMembershipTier,
+} from "@/lib/membership";
 
 function getInitials(name: string) {
   return name
@@ -35,9 +28,27 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-function MentorCard({ mentor, index, isRecommended, reason }: { mentor: Mentor; index: number; isRecommended?: boolean; reason?: string }) {
+function MentorCard({
+  mentor,
+  index,
+  isRecommended,
+  reason,
+  userTier,
+  alumniSessionsUsed,
+}: {
+  mentor: Mentor;
+  index: number;
+  isRecommended?: boolean;
+  reason?: string;
+  userTier: MembershipTier;
+  alumniSessionsUsed: number;
+}) {
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const entitlement = canBookMentor(mentor.category, userTier, alumniSessionsUsed);
+  const isBookBlocked = !entitlement.allowed;
+  const isIndustryPaidForFree = mentor.category === "industry" && userTier === "free";
+  const priceLabel = getMentorPriceLabel(mentor.category, userTier);
 
   return (
     <div
@@ -61,7 +72,7 @@ function MentorCard({ mentor, index, isRecommended, reason }: { mentor: Mentor; 
             AI Match
           </span>
         )}
-        <span className="text-lg font-bold text-primary">{mentor.price}</span>
+        <span className="text-lg font-bold text-primary">{priceLabel}</span>
       </div>
 
       <div className="flex items-center gap-3 mb-4">
@@ -113,22 +124,33 @@ function MentorCard({ mentor, index, isRecommended, reason }: { mentor: Mentor; 
       <Button
         variant={mentor.available ? "default" : "outline"}
         className="w-full mt-auto"
-        disabled={!mentor.available}
-        onClick={() => mentor.available && setBookModalOpen(true)}
+        disabled={!mentor.available || isBookBlocked}
+        onClick={() => mentor.available && !isBookBlocked && setBookModalOpen(true)}
       >
-        {mentor.available ? (
+        {!mentor.available ? (
+          "Join Waitlist"
+        ) : isBookBlocked ? (
+          "Upgrade to Book"
+        ) : isIndustryPaidForFree ? (
+          <>
+            <Calendar className="w-4 h-4" />
+            Book Paid Session
+          </>
+        ) : (
           <>
             <Calendar className="w-4 h-4" />
             Book Session
           </>
-        ) : (
-          "Join Waitlist"
         )}
       </Button>
+      {isBookBlocked && (
+        <p className="text-xs text-muted-foreground mt-2">{entitlement.reason}</p>
+      )}
       <BookSessionModal
         open={bookModalOpen}
         onOpenChange={setBookModalOpen}
         mentorName={mentor.name}
+        mentorCategory={mentor.category}
         mentorEmail={mentor.email}
         mentorWhatsapp={mentor.whatsapp}
       />
@@ -142,8 +164,46 @@ function scrollToTop() {
   document.body.scrollTop = 0;
 }
 
+type AlumniUserDoc = {
+  email?: string;
+  name?: string;
+  domain?: string;
+  companyName?: string;
+  position?: string;
+  profileImageUrl?: string;
+  role?: "student" | "alumni";
+};
+
+function mapAlumniUserToMentor(data: AlumniUserDoc): Mentor {
+  const email = String(data.email || "");
+  const nameFromEmail = email ? email.split("@")[0] : "Alumni";
+  const cleanName = String(data.name || "").trim() || nameFromEmail;
+  const company = String(data.companyName || "").trim();
+  const position = String(data.position || "").trim();
+  const domain = String(data.domain || "").trim();
+  const expertise = domain
+    ? domain
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 6)
+    : ["Career Guidance", "Interview Prep"];
+
+  return {
+    name: cleanName,
+    role: position ? `${position}${company ? ` @ ${company}` : ""}` : company ? `Alumni Mentor @ ${company}` : "Alumni Mentor",
+    category: "alumni",
+    expertise: expertise.length > 0 ? expertise : ["Career Guidance", "Interview Prep"],
+    experience: "1+ year",
+    image: String(data.profileImageUrl || "/placeholder.svg"),
+    available: true,
+    price: "Free",
+    email,
+  };
+}
+
 export default function Mentors() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const db = getFirestoreDb();
   const [skills, setSkills] = useState("");
   const [targetRole, setTargetRole] = useState("");
@@ -151,13 +211,9 @@ export default function Mentors() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [recommendedNames, setRecommendedNames] = useState<string[]>([]);
   const [recommendationReasons, setRecommendationReasons] = useState<Record<string, string>>({});
-  const [connectUsers, setConnectUsers] = useState<{ id: string; email: string; role: "student" | "alumni" }[]>([]);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ id: string; from: string; text: string }[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [activeChat, setActiveChat] = useState<{ chatId: string; partnerId: string; partnerEmail: string } | null>(null);
-  const [chatList, setChatList] = useState<{ chatId: string; partnerId: string; partnerEmail: string }[]>([]);
+  const [userAlumniMentors, setUserAlumniMentors] = useState<Mentor[]>([]);
+  const [userTier, setUserTier] = useState<MembershipTier>("free");
+  const [alumniSessionsUsed, setAlumniSessionsUsed] = useState(0);
 
   useLayoutEffect(() => {
     scrollToTop();
@@ -175,40 +231,41 @@ export default function Mentors() {
   }, []);
 
   useEffect(() => {
-    const loadConnectUsers = async () => {
-      if (!user || !role) return;
-      const targetRole = role === "student" ? "alumni" : "student";
-      try {
-        const q = query(collection(db, "users"), where("role", "==", targetRole));
-        const snap = await getDocs(q);
-        const list = snap.docs
-          .map((d) => ({
-            id: d.id,
-            email: String(d.data()?.email || ""),
-            role: targetRole,
-          }))
-          .filter((d) => d.id !== user.uid);
-        setConnectUsers(list);
-      } catch {
-        setConnectUsers([]);
-      }
-    };
-    loadConnectUsers();
-  }, [db, user, role]);
+    const q = query(collection(db, "users"), where("role", "==", "alumni"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const next = snap.docs.map((docSnap) => mapAlumniUserToMentor(docSnap.data() as AlumniUserDoc));
+        setUserAlumniMentors(next);
+      },
+      () => setUserAlumniMentors([]),
+    );
+    return () => unsub();
+  }, [db]);
 
   useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "chats"), where("participants", "array-contains", user.uid));
-    const unsub = onSnapshot(q, (snap) => {
-      const next = snap.docs.map((d) => {
-        const data = d.data() as { participants?: string[]; participantEmails?: Record<string, string> };
-        const participants = data.participants || [];
-        const partnerId = participants.find((id) => id !== user.uid) || "";
-        const partnerEmail = data.participantEmails?.[partnerId] || "Unknown";
-        return { chatId: d.id, partnerId, partnerEmail };
-      });
-      setChatList(next);
-    });
+    if (!user) {
+      setUserTier("free");
+      setAlumniSessionsUsed(0);
+      return;
+    }
+    const unsub = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        if (!snap.exists()) {
+          setUserTier("free");
+          setAlumniSessionsUsed(0);
+          return;
+        }
+        const data = snap.data() as { membershipTier?: string; alumniSessionsUsed?: number };
+        setUserTier(normalizeMembershipTier(data.membershipTier));
+        setAlumniSessionsUsed(typeof data.alumniSessionsUsed === "number" ? data.alumniSessionsUsed : 0);
+      },
+      () => {
+        setUserTier("free");
+        setAlumniSessionsUsed(0);
+      },
+    );
     return () => unsub();
   }, [db, user]);
 
@@ -217,6 +274,15 @@ export default function Mentors() {
     const industryList = mentors.filter((m) => m.category !== "alumni");
     return { alumniMentors: alumniList, industryMentors: industryList };
   }, []);
+
+  const combinedAlumniMentors = useMemo(() => {
+    const byKey = new Map<string, Mentor>();
+    [...userAlumniMentors, ...alumniMentors].forEach((mentor) => {
+      const key = (mentor.email || mentor.name).trim().toLowerCase();
+      if (!byKey.has(key)) byKey.set(key, mentor);
+    });
+    return Array.from(byKey.values());
+  }, [userAlumniMentors, alumniMentors]);
 
   const rankedMentors = useMemo(() => {
     if (recommendedNames.length === 0) return industryMentors;
@@ -263,74 +329,6 @@ export default function Mentors() {
     } finally {
       setMatchLoading(false);
     }
-  };
-
-  const buildChatId = (a: string, b: string) => [a, b].sort().join("_");
-
-  const openChatWith = async (partnerId: string, partnerEmail: string) => {
-    if (!user) return;
-    const chatId = buildChatId(user.uid, partnerId);
-    const ref = doc(db, "chats", chatId);
-    await setDoc(
-      ref,
-      {
-        participants: [user.uid, partnerId],
-        participantEmails: {
-          [user.uid]: user.email || "",
-          [partnerId]: partnerEmail,
-        },
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-    setActiveChat({ chatId, partnerId, partnerEmail });
-    setChatOpen(true);
-  };
-
-  const connectWithAlumni = async (partnerId: string, partnerEmail: string) => {
-    if (!user) return;
-    const connId = buildChatId(user.uid, partnerId);
-    await setDoc(
-      doc(db, "connections", connId),
-      {
-        studentId: role === "student" ? user.uid : partnerId,
-        alumniId: role === "student" ? partnerId : user.uid,
-        status: "connected",
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-    await openChatWith(partnerId, partnerEmail);
-  };
-
-  useEffect(() => {
-    if (!activeChat) return;
-    setChatLoading(true);
-    const q = query(
-      collection(db, "chats", activeChat.chatId, "messages"),
-      orderBy("createdAt", "asc"),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const msgs = snap.docs.map((d) => {
-        const data = d.data() as { from?: string; text?: string };
-        return { id: d.id, from: data.from || "", text: data.text || "" };
-      });
-      setChatMessages(msgs);
-      setChatLoading(false);
-    });
-    return () => unsub();
-  }, [db, activeChat]);
-
-  const sendChatMessage = async () => {
-    const trimmed = chatInput.trim();
-    if (!trimmed || !activeChat || !user) return;
-    setChatInput("");
-    await addDoc(collection(db, "chats", activeChat.chatId, "messages"), {
-      from: user.uid,
-      text: trimmed,
-      createdAt: serverTimestamp(),
-    });
-    await setDoc(doc(db, "chats", activeChat.chatId), { updatedAt: serverTimestamp() }, { merge: true });
   };
 
   return (
@@ -384,70 +382,22 @@ export default function Mentors() {
             </div>
           </div>
 
-          <div className="max-w-4xl mx-auto mb-10 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6">
-            <div className="rounded-xl border-2 border-border bg-card p-4 md:p-5">
-              <h3 className="font-semibold text-foreground mb-3">
-                {role === "student" ? "Connect with Alumni" : "Connect with Students"}
-              </h3>
-              {!role && (
-                <p className="text-sm text-muted-foreground">Login to connect with users.</p>
-              )}
-              {!!role && (
-                <div className="space-y-3">
-                  {connectUsers.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No profiles available yet.</p>
-                  )}
-                  {connectUsers.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{a.email || "Alumni"}</p>
-                        <p className="text-xs text-muted-foreground">{a.role === "alumni" ? "Alumni" : "Student"}</p>
-                      </div>
-                      <Button size="sm" className="gap-1.5" onClick={() => connectWithAlumni(a.id, a.email)}>
-                        <MessageCircle className="h-3.5 w-3.5" />
-                        Connect
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-xl border-2 border-border bg-card p-4 md:p-5">
-              <h3 className="font-semibold text-foreground mb-3">Your Chats</h3>
-              {chatList.length === 0 && (
-                <p className="text-sm text-muted-foreground">No chats yet.</p>
-              )}
-              <div className="space-y-2">
-                {chatList.map((c) => (
-                  <button
-                    key={c.chatId}
-                    type="button"
-                    className="w-full text-left border border-border rounded-lg p-3 hover:border-primary/50 transition-colors"
-                    onClick={() => openChatWith(c.partnerId, c.partnerEmail)}
-                  >
-                    <p className="text-sm font-medium text-foreground">{c.partnerEmail}</p>
-                    <p className="text-xs text-muted-foreground">Open chat</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           <div className="mt-12">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-foreground">Alumni Mentors</h2>
-              <p className="text-xs text-muted-foreground">Connect via the alumni panel above.</p>
+              <p className="text-xs text-muted-foreground">All platform alumni are listed here.</p>
             </div>
-            {alumniMentors.length === 0 ? (
+            {combinedAlumniMentors.length === 0 ? (
               <p className="text-sm text-muted-foreground">No alumni mentors available yet.</p>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {alumniMentors.map((mentor, index) => (
+                {combinedAlumniMentors.map((mentor, index) => (
                   <MentorCard
                     key={`alumni-${mentor.name}-${index}`}
                     mentor={mentor}
                     index={index}
+                    userTier={userTier}
+                    alumniSessionsUsed={alumniSessionsUsed}
                   />
                 ))}
               </div>
@@ -467,6 +417,8 @@ export default function Mentors() {
                   index={index}
                   isRecommended={recommendedNames.includes(mentor.name)}
                   reason={recommendationReasons[mentor.name]}
+                  userTier={userTier}
+                  alumniSessionsUsed={alumniSessionsUsed}
                 />
               ))}
             </div>
@@ -476,46 +428,6 @@ export default function Mentors() {
       </main>
 
       <Footer />
-
-      <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Chat</DialogTitle>
-          </DialogHeader>
-          <div className="rounded-lg border border-border bg-muted/20 p-3 max-h-[360px] overflow-y-auto space-y-3">
-            {chatLoading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading chat…
-              </div>
-            )}
-            {chatMessages.map((m) => (
-              <div key={m.id} className={`flex ${m.from === user?.uid ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[80%] text-sm rounded px-3 py-2 ${
-                    m.from === user?.uid
-                      ? "bg-foreground text-background"
-                      : "bg-card border border-border"
-                  }`}
-                >
-                  {m.text}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2 items-end">
-            <Textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Type a message..."
-              className="min-h-[80px]"
-            />
-            <Button className="h-10" onClick={sendChatMessage} disabled={!activeChat}>
-              Send
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

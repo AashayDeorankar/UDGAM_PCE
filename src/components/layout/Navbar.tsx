@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import logoImage from "@/assets/logo.png";
+import { UpgradePlanModal } from "@/components/UpgradePlanModal";
+import { getFirestoreDb } from "@/integrations/firebase/config";
+import { doc, onSnapshot } from "firebase/firestore";
+import { type MembershipTier, normalizeMembershipTier } from "@/lib/membership";
 
 const studentLinks = [
   { name: "Connect", href: "/connect" },
@@ -28,8 +32,33 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const { user, signOut, loading, isAdmin, role } = useAuth();
   const navigate = useNavigate();
+  const db = getFirestoreDb();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [membershipTier, setMembershipTier] = useState<MembershipTier>("free");
   const navLinks = role === "alumni" ? alumniLinks : studentLinks;
+
+  useEffect(() => {
+    if (!user) {
+      setMembershipTier("free");
+      return;
+    }
+    const unsub = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        if (!snap.exists()) {
+          setMembershipTier("free");
+          return;
+        }
+        const data = snap.data() as { membershipTier?: string };
+        setMembershipTier(normalizeMembershipTier(data.membershipTier));
+      },
+      () => {
+        setMembershipTier("free");
+      },
+    );
+    return () => unsub();
+  }, [db, user]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -92,7 +121,7 @@ export function Navbar() {
           scrolled
             ? "bg-background/95 backdrop-blur-md shadow-lg shadow-foreground/5"
             : "bg-background/90 backdrop-blur-sm shadow-md shadow-foreground/5"
-        } border border-border/50 max-w-3xl w-full`}
+        } border border-border/50 max-w-6xl w-full`}
       >
         {/* Logo - Left */}
         <Link to="/" className="flex items-center gap-1.5 pl-1.5 flex-shrink-0 min-w-0">
@@ -100,15 +129,15 @@ export function Navbar() {
           <span className="text-[1rem] font-bold hidden sm:inline leading-8">
             Tech<span className="text-primary">Prep</span>
           </span>
-          <span className="hidden lg:inline text-xs handwritten text-muted-foreground/80 ml-0.5">for students</span>
+          <span className="hidden xl:inline text-xs handwritten text-muted-foreground/80 ml-0.5">for students</span>
         </Link>
 
         {/* Desktop Navigation - Center */}
-        <div className="hidden md:flex items-center gap-2 px-2 min-w-0 flex-1 justify-center">
+        <div className="hidden lg:flex items-center gap-1 px-2 min-w-0 flex-1 justify-center">
           {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
             const isHashLink = link.href.startsWith("/#");
             const isPageLink = link.href.startsWith("/") && !isHashLink;
-            const linkClass = "px-2 py-1 text-sm text-muted-foreground hover:text-primary link-underline transition-all duration-200 whitespace-nowrap";
+            const linkClass = "px-2 py-1 text-[13px] xl:text-sm text-muted-foreground hover:text-primary link-underline transition-all duration-200 whitespace-nowrap";
             if (isPageLink) {
               return (
                 <Link
@@ -134,11 +163,18 @@ export function Navbar() {
               </a>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setUpgradeModalOpen(true)}
+            className="px-2 py-1 text-[13px] xl:text-sm text-primary hover:text-primary/80 link-underline transition-all duration-200 whitespace-nowrap"
+          >
+            Upgrade
+          </button>
         </div>
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden p-2 rounded-full hover:bg-muted/50 transition-colors"
+          className="lg:hidden p-2 rounded-full hover:bg-muted/50 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
         >
@@ -153,10 +189,20 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full mt-2 left-4 right-4 md:hidden"
+            className="absolute top-full mt-2 left-4 right-4 lg:hidden"
           >
             <div className="bg-background/95 backdrop-blur-md rounded-2xl shadow-lg shadow-foreground/5 border border-border/50 p-4 max-w-4xl mx-auto">
               <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  className="px-4 py-3 text-primary hover:text-primary/80 hover:bg-muted/50 rounded-xl transition-colors text-left"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setUpgradeModalOpen(true);
+                  }}
+                >
+                  Upgrade
+                </button>
                 {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
                   const isHashLink = link.href.startsWith("/#");
                   const isPageLink = link.href.startsWith("/") && !isHashLink;
@@ -249,7 +295,7 @@ export function Navbar() {
 
       {!loading && !user && (
         <div
-          className={`hidden md:flex items-center gap-1.5 px-1.5 py-1 rounded-full border border-border/50 transition-all duration-300 absolute right-4 top-4 ${
+          className={`hidden lg:flex items-center gap-1.5 px-1.5 py-1 rounded-full border border-border/50 transition-all duration-300 absolute right-4 top-4 ${
             scrolled
               ? "bg-background/95 backdrop-blur-md shadow-md shadow-foreground/5"
               : "bg-background/90 backdrop-blur-sm shadow-sm shadow-foreground/5"
@@ -269,7 +315,7 @@ export function Navbar() {
       {!loading && user && (
         <div
           data-profile-menu
-          className={`hidden md:flex items-center gap-1.5 px-1.5 py-1 rounded-full border border-border/50 transition-all duration-300 absolute right-4 top-4 ${
+          className={`hidden lg:flex items-center gap-1.5 px-1.5 py-1 rounded-full border border-border/50 transition-all duration-300 absolute right-4 top-4 ${
             scrolled
               ? "bg-background/95 backdrop-blur-md shadow-md shadow-foreground/5"
               : "bg-background/90 backdrop-blur-sm shadow-sm shadow-foreground/5"
@@ -295,6 +341,16 @@ export function Navbar() {
               data-profile-menu
               className="absolute right-2 top-11 w-44 rounded-xl border border-border bg-background shadow-lg overflow-hidden"
             >
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  setUpgradeModalOpen(true);
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
+              >
+                Upgrade plan
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -331,6 +387,16 @@ export function Navbar() {
         </div>
       )}
 
+      <UpgradePlanModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        currentTier={membershipTier}
+        isLoggedIn={!!user}
+        onLoginClick={() => {
+          setUpgradeModalOpen(false);
+          navigate("/auth?redirect=%2Fmentors");
+        }}
+      />
     </motion.header>
   );
 }
