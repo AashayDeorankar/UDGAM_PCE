@@ -24,6 +24,7 @@ import { INTERVIEW_COMPANIES, type CompanyId } from "@/data/companies";
 import { cn } from "@/lib/utils";
 import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/contexts/AuthContext";
+import { addAssessmentResult } from "@/lib/interview-reports";
 
 const QUESTION_TYPES = [
   {
@@ -80,6 +81,7 @@ export default function InterviewPrep() {
   const [company, setCompany] = useState<CompanyId | "">(
     (VALID_IDS.has(companyFromUrl) ? companyFromUrl : "") as CompanyId | ""
   );
+  const companyName = INTERVIEW_COMPANIES.find((c) => c.id === company)?.name ?? company;
   const [companyOpen, setCompanyOpen] = useState(false);
   const [roleInput, setRoleInput] = useState("");
   const [topicsInput, setTopicsInput] = useState("");
@@ -176,7 +178,18 @@ export default function InterviewPrep() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      setAssessmentEvaluations(Array.isArray(data.evaluations) ? data.evaluations : []);
+      const evaluations = Array.isArray(data.evaluations) ? data.evaluations : [];
+      setAssessmentEvaluations(evaluations);
+      if (user?.uid && evaluations.length) {
+        const total = evaluations.reduce((sum, ev) => sum + (Number(ev.score) || 0), 0);
+        const max = evaluations.length * 10;
+        const percent = max ? Math.round((total / max) * 100) : 0;
+        addAssessmentResult({
+          userId: user.uid,
+          label: `${companyName || "Assessment"} - ${assessmentMode.toUpperCase()}`,
+          score: percent,
+        });
+      }
     } catch {
       setAssessmentEvaluations([]);
     } finally {

@@ -367,7 +367,7 @@ export default function Dashboard() {
                     overall: { label: "Interview Score", color: "hsl(140 70% 45%)" },
                     confidence: { label: "Confidence", color: "hsl(210 85% 55%)" },
                   }}
-                  className="h-80 md:h-96 mt-4"
+                  className="w-full h-80 md:h-96 mt-4 aspect-auto justify-start"
                 >
                   <LineChart data={lineData} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -393,7 +393,7 @@ export default function Dashboard() {
               ) : (
                 <ChartContainer
                   config={{ score: { label: "Assessment Score", color: "hsl(140 70% 45%)" } }}
-                  className="h-72 md:h-80 mt-4"
+                  className="w-full h-72 md:h-80 mt-4 aspect-auto justify-start"
                 >
                   <LineChart data={assessmentLine} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />

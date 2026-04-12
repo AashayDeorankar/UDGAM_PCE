@@ -80,6 +80,7 @@ export default function MockInterview() {
   const [analytics, setAnalytics] = useState<{ averageScore: number; recentScores: number[]; readiness: string; totalAttempts: number } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [emotionDisplay, setEmotionDisplay] = useState<EmotionSample | null>(null);
+  const lastSpeechInputRef = useRef("");
 
   useLayoutEffect(() => {
     scrollToTop();
@@ -124,10 +125,19 @@ export default function MockInterview() {
       setReportHistory([]);
       setReportSaving(false);
       lastSavedReportRef.current = null;
+      lastSpeechInputRef.current = "";
       emotionSamplesRef.current = [];
       setEmotionSummary({ averages: {}, distribution: {}, timeline: [] });
     }
   }, [mockOpen]);
+
+  useEffect(() => {
+    const live = speechState.liveTranscript.trim();
+    if (!live || submitted) return;
+    if (mockInput && mockInput !== lastSpeechInputRef.current) return;
+    lastSpeechInputRef.current = live;
+    setMockInput(live);
+  }, [speechState.liveTranscript, submitted, mockInput]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -244,6 +254,7 @@ export default function MockInterview() {
     const effectiveMessage = typed || spoken;
     if (!effectiveMessage || mockLoading || !mockSessionId || submitted) return;
     setMockInput("");
+    lastSpeechInputRef.current = "";
     setMockMessages((prev) => [...prev, { role: "user", content: effectiveMessage }]);
     setMockLoading(true);
     const responseTimeMs = lastQuestionAtRef.current ? Date.now() - lastQuestionAtRef.current : 0;
