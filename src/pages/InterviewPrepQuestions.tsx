@@ -13,6 +13,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
 import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/contexts/AuthContext";
+import { addAssessmentResult } from "@/lib/interview-reports";
 
 const TYPE_LABELS: Record<string, string> = {
   hr: "HR Questions",
@@ -223,6 +224,13 @@ export default function InterviewPrepQuestions() {
         ...prev,
         [index]: data as HRAnalysisResult,
       }));
+      if (user?.uid) {
+        addAssessmentResult({
+          userId: user.uid,
+          label: `${companyName} - ${typeLabel}`,
+          score: Number(data.score) || 0,
+        });
+      }
     } catch {
       setResults((prev) => ({
         ...prev,

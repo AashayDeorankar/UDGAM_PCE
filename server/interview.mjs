@@ -110,10 +110,24 @@ Return JSON ONLY in this exact shape:
   "strengths": ["..."],
   "weaknesses": ["..."],
   "suggestions": ["..."],
-  "summary": "..."
+  "summary": "...",
+  "emotion_report": ["..."]
 }
 Rules:
 - Scores are 0-100.
+- Summary is 1-2 sentences.
+- Arrays contain short bullets.
+- No extra text or markdown.`;
+
+const DASHBOARD_SUMMARY_SYSTEM = `You are a professional interview evaluator. Summarize overall performance trends.
+Return JSON ONLY in this exact shape:
+{
+  "summary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "suggestions": ["..."]
+}
+Rules:
 - Summary is 1-2 sentences.
 - Arrays contain short bullets.
 - No extra text or markdown.`;
@@ -382,6 +396,7 @@ export async function handleInterviewSubmit(body) {
 
   const interviewData = payload.interview_data;
   const chatTranscript = String(payload.chat_transcript || "");
+  const emotionAnalytics = payload.emotion_analytics || null;
   if (!Array.isArray(interviewData) || interviewData.length === 0) {
     return { statusCode: 200, body: JSON.stringify({ error: "Missing interview data" }) };
   }
@@ -389,7 +404,10 @@ export async function handleInterviewSubmit(body) {
   const transcriptBlock = chatTranscript
     ? `Full chat transcript:\n${chatTranscript}\n\n`
     : "";
-  const userPrompt = `\n\nEvaluate this interview:\n\n${transcriptBlock}Questions and Answers:\n${JSON.stringify(interviewData)}\n\nEvaluate based on:\n\n1. Confidence (based on hesitation, fillers, clarity)\n2. Fluency (speech flow and pauses)\n3. Communication (clarity and structure)\n4. Technical correctness of answers\n\nReturn JSON in the required format.`;
+  const emotionBlock = emotionAnalytics
+    ? `Emotion analytics (local processing):\n${JSON.stringify(emotionAnalytics)}\n\n`
+    : "";
+  const userPrompt = `\n\nEvaluate this interview:\n\n${transcriptBlock}${emotionBlock}Questions and Answers:\n${JSON.stringify(interviewData)}\n\nEvaluate based on:\n\n1. Confidence (based on hesitation, fillers, clarity)\n2. Fluency (speech flow and pauses)\n3. Communication (clarity and structure)\n4. Technical correctness of answers\n5. Emotion analytics (confidence, stress, engagement, eye contact)\n\nReturn JSON in the required format.`;
 
   const attempt = async (extraRule) => {
     const prompt = extraRule ? `${userPrompt}\n\n${extraRule}` : userPrompt;
@@ -424,6 +442,7 @@ export async function handleInterviewSubmit(body) {
         weaknesses: [],
         suggestions: [],
         summary: "OpenRouter evaluation unavailable.",
+        emotion_report: [],
         raw: error || content || "",
       }),
     };
@@ -441,6 +460,67 @@ export async function handleInterviewSubmit(body) {
       weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
       summary: String(parsed.summary || ""),
+      emotion_report: Array.isArray(parsed.emotion_report) ? parsed.emotion_report : [],
+      raw: content || "",
+    }),
+  };
+}
+
+export async function handleDashboardSummary(body) {
+  let payload;
+  try {
+    payload = JSON.parse(body || "{}");
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
+  }
+
+  const reports = payload.reports;
+  if (!Array.isArray(reports) || reports.length === 0) {
+    return { statusCode: 200, body: JSON.stringify({ error: "Missing reports" }) };
+  }
+
+  const userPrompt = `Summarize this interview performance data:\n${JSON.stringify(reports)}`;
+
+  const attempt = async (extraRule) => {
+    const prompt = extraRule ? `${userPrompt}\n\n${extraRule}` : userPrompt;
+    return await callOpenRouter({
+      system: DASHBOARD_SUMMARY_SYSTEM,
+      messages: [{ role: "user", content: prompt }],
+      model: "google/gemini-2.0-flash-001",
+      max_tokens: 280,
+      temperature: 0.2,
+    });
+  };
+
+  let { content, error } = await attempt("");
+  let parsed = safeJsonParse(content || "");
+  if (!parsed) {
+    const retry = await attempt("Return ONLY valid JSON. No markdown.");
+    content = retry.content;
+    error = retry.error;
+    parsed = safeJsonParse(content || "");
+  }
+
+  if (error || !parsed) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        summary: "OpenRouter summary unavailable.",
+        strengths: [],
+        weaknesses: [],
+        suggestions: [],
+        raw: error || content || "",
+      }),
+    };
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      summary: String(parsed.summary || ""),
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
       raw: content || "",
     }),
   };

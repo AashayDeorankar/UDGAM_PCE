@@ -16,7 +16,10 @@ import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/contexts/AuthContext";
 import { VoiceRecorder, type SpeechRecognitionState, EMPTY_SPEECH_STATE } from "@/components/interview/VoiceRecorder";
 import { InterviewStats } from "@/components/interview/InterviewStats";
+import { FaceCamera } from "@/components/interview/FaceCamera";
 import { addInterviewReport, loadInterviewReports, type InterviewReportRecord } from "@/lib/interview-reports";
+import { summarizeEmotionSamples, type EmotionSummary } from "@/lib/emotion/EmotionTracker";
+import type { EmotionSample } from "@/lib/emotion/EmotionAnalyzer";
 
 function scrollToTop() {
   window.scrollTo(0, 0);
@@ -65,14 +68,19 @@ export default function MockInterview() {
     summary: string;
     raw: string;
     parsed: string;
+    emotionReport: string[];
   } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [reportHistory, setReportHistory] = useState<InterviewReportRecord[]>([]);
   const [reportSaving, setReportSaving] = useState(false);
   const lastSavedReportRef = useRef<string | null>(null);
   const lastQuestionAtRef = useRef<number | null>(null);
+  const emotionSamplesRef = useRef<EmotionSample[]>([]);
+  const [emotionSummary, setEmotionSummary] = useState<EmotionSummary>({ averages: {}, distribution: {}, timeline: [] });
   const [analytics, setAnalytics] = useState<{ averageScore: number; recentScores: number[]; readiness: string; totalAttempts: number } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [emotionDisplay, setEmotionDisplay] = useState<EmotionSample | null>(null);
+  const lastSpeechInputRef = useRef("");
 
   useLayoutEffect(() => {
     scrollToTop();
@@ -117,8 +125,19 @@ export default function MockInterview() {
       setReportHistory([]);
       setReportSaving(false);
       lastSavedReportRef.current = null;
+      lastSpeechInputRef.current = "";
+      emotionSamplesRef.current = [];
+      setEmotionSummary({ averages: {}, distribution: {}, timeline: [] });
     }
   }, [mockOpen]);
+
+  useEffect(() => {
+    const live = speechState.liveTranscript.trim();
+    if (!live || submitted) return;
+    if (mockInput && mockInput !== lastSpeechInputRef.current) return;
+    lastSpeechInputRef.current = live;
+    setMockInput(live);
+  }, [speechState.liveTranscript, submitted, mockInput]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -131,6 +150,7 @@ export default function MockInterview() {
     if (lastSavedReportRef.current === signature) return;
     lastSavedReportRef.current = signature;
     setReportSaving(true);
+    const totalDurationMs = interviewData.reduce((acc, item) => acc + (item.duration || 0), 0);
     addInterviewReport({
       userId: user.uid,
       role: roleInput,
@@ -145,6 +165,11 @@ export default function MockInterview() {
       strengths: finalReport.strengths,
       weaknesses: finalReport.weaknesses,
       suggestions: finalReport.suggestions,
+      durationMs: totalDurationMs,
+      emotionAverages: emotionSummary.averages,
+      emotionDistribution: emotionSummary.distribution,
+      emotionTimeline: emotionSummary.timeline,
+      emotionReport: finalReport.emotionReport,
     }).then(() => loadInterviewReports(user.uid, 10).then(setReportHistory))
       .finally(() => setReportSaving(false));
   }, [finalReport, submitted, reportSaving, user?.uid, roleInput, company, topicsInput]);
@@ -217,12 +242,19 @@ export default function MockInterview() {
       .map((msg) => `${msg.role === "assistant" ? "Interviewer" : "Candidate"}: ${msg.content}`)
       .join("\n");
 
+  const handleEmotionSample = (sample: EmotionSample) => {
+    const samples = [...emotionSamplesRef.current, sample].slice(-360);
+    emotionSamplesRef.current = samples;
+    setEmotionSummary(summarizeEmotionSamples(samples));
+  };
+
   const sendMockMessage = async () => {
     const typed = mockInput.trim();
     const spoken = speechState.finalTranscript.trim();
     const effectiveMessage = typed || spoken;
     if (!effectiveMessage || mockLoading || !mockSessionId || submitted) return;
     setMockInput("");
+    lastSpeechInputRef.current = "";
     setMockMessages((prev) => [...prev, { role: "user", content: effectiveMessage }]);
     setMockLoading(true);
     const responseTimeMs = lastQuestionAtRef.current ? Date.now() - lastQuestionAtRef.current : 0;
@@ -274,6 +306,7 @@ export default function MockInterview() {
     const payloadData = interviewData.length ? interviewData : buildInterviewDataFromMessages();
     if (payloadData.length === 0) return;
     const chatTranscript = buildChatTranscript();
+    const emotionPayload = emotionSummary;
     setSubmitLoading(true);
     setSubmitStep("Analyzing Interview...");
     setSubmitted(true);
@@ -282,7 +315,11 @@ export default function MockInterview() {
       const res = await fetch(`${getApiBase()}/api/interview/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interview_data: payloadData, chat_transcript: chatTranscript }),
+        body: JSON.stringify({
+          interview_data: payloadData,
+          chat_transcript: chatTranscript,
+          emotion_analytics: emotionPayload,
+        }),
       });
       setSubmitStep("Checking Technical Answers...");
       const data = await res.json().catch(() => null);
@@ -310,6 +347,7 @@ export default function MockInterview() {
             suggestions: data.suggestions,
             summary: data.summary,
           }),
+          emotionReport: Array.isArray(data.emotion_report) ? data.emotion_report : [],
         });
       }
     } catch {
@@ -325,6 +363,7 @@ export default function MockInterview() {
         summary: "OpenRouter evaluation failed.",
         raw: "",
         parsed: "",
+        emotionReport: [],
       });
     } finally {
       setSubmitLoading(false);
@@ -333,11 +372,11 @@ export default function MockInterview() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white text-black">
       <Navbar />
 
-      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-secondary/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-dots opacity-40" />
+      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#00000008_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <Button
             variant="ghost"
@@ -355,34 +394,34 @@ export default function MockInterview() {
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
             <motion.span
-              className="sticker-green-soft mb-4 inline-block"
+              className="mb-4 inline-block rounded-full border-2 border-black bg-emerald-200 px-4 py-1 text-xs font-semibold uppercase tracking-widest"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
             >
               AI Mock Interview
             </motion.span>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              Practice with a realistic <span className="underline-sketch">AI interviewer</span>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black mb-4">
+              Practice with a realistic <span className="underline decoration-4 decoration-orange-400">AI interviewer</span>
             </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+            <p className="text-black/70 max-w-2xl mx-auto text-lg">
               Select a company, set your role and focus topics, then start a guided mock interview.
             </p>
           </motion.div>
 
-          <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1.25fr_0.9fr] gap-6">
-            <div className="rounded-xl border-2 border-border bg-card p-4 md:p-5 space-y-4 shadow-sm">
+          <div className="flex justify-center">
+            <div className="w-full max-w-4xl rounded-xl border-2 border-black bg-white p-4 md:p-6 space-y-4 shadow-[6px_6px_0_0_#000000]">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground">Interview Setup</h3>
+                <h3 className="font-bold text-black">Interview Setup</h3>
                 {mockConfidence && (
-                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-primary/10 text-primary">
+                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-orange-200 border border-black">
                     Confidence: {mockConfidence}
                   </span>
                 )}
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Select company</label>
+                <label className="text-xs font-semibold text-black/70">Select company</label>
                 <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -390,8 +429,8 @@ export default function MockInterview() {
                       role="combobox"
                       aria-expanded={companyOpen}
                       className={cn(
-                        "w-full h-12 justify-between border-2 border-foreground rounded-xl bg-background hover:border-primary/50 font-normal",
-                        !company && "text-muted-foreground"
+                        "w-full h-12 justify-between border-2 border-black rounded-xl bg-white hover:bg-black hover:text-white font-normal",
+                        !company && "text-black/60"
                       )}
                     >
                       {company
@@ -427,7 +466,7 @@ export default function MockInterview() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Target role</label>
+                  <label className="text-xs font-semibold text-black/70">Target role</label>
                   <Input
                     value={roleInput}
                     onChange={(e) => setRoleInput(e.target.value)}
@@ -435,7 +474,7 @@ export default function MockInterview() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Topics (comma-separated)</label>
+                  <label className="text-xs font-semibold text-black/70">Topics (comma-separated)</label>
                   <Input
                     value={topicsInput}
                     onChange={(e) => setTopicsInput(e.target.value)}
@@ -446,7 +485,7 @@ export default function MockInterview() {
 
               <div className="flex flex-wrap gap-2">
                 <Button
-                  className="gap-2"
+                  className="gap-2 border-2 border-black bg-black text-white hover:bg-white hover:text-black"
                   onClick={() => {
                     setMockOpen(true);
                     if (!mockSessionId) startMockInterview();
@@ -456,69 +495,16 @@ export default function MockInterview() {
                 </Button>
               </div>
 
-              <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <div className="rounded-lg border-2 border-black bg-white p-3 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-emerald-200 border-2 border-black flex items-center justify-center">
                   <Briefcase className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-black/70">
                   Keep answers concise. The AI adapts difficulty based on your responses.
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border-2 border-border bg-card p-4 md:p-5 space-y-4 shadow-sm">
-              <div>
-                <h3 className="font-semibold text-foreground mb-2">Your Interview Readiness</h3>
-                {analyticsLoading && (
-                  <p className="text-sm text-muted-foreground">Loading analytics…</p>
-                )}
-                {!analyticsLoading && analytics && (
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="font-medium text-foreground">Average score:</span> {analytics.averageScore}/100
-                    </p>
-                    <p>
-                      <span className="font-medium text-foreground">Readiness:</span> {analytics.readiness}
-                    </p>
-                    <p>
-                      <span className="font-medium text-foreground">Recent scores:</span> {analytics.recentScores.length ? analytics.recentScores.join(", ") : "No attempts yet"}
-                    </p>
-                  </div>
-                )}
-                {!analyticsLoading && !analytics && (
-                  <p className="text-sm text-muted-foreground">No interview data yet. Start practicing to see insights.</p>
-                )}
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">Mock Interview History</h4>
-                {!user && (
-                  <p className="text-sm text-muted-foreground">Sign in to see your interview reports.</p>
-                )}
-                {user && reportHistory.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No mock interview reports yet.</p>
-                )}
-                {user && reportHistory.length > 0 && (
-                  <div className="space-y-3">
-                    {reportHistory.map((report) => (
-                      <div key={report.id} className="rounded-xl border-2 border-border bg-card/80 p-3 text-sm shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-2 py-1 text-xs font-semibold text-primary">
-                            Overall {report.overall}%
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {report.createdAt?.toDate ? report.createdAt.toDate().toLocaleDateString() : ""}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground mt-2">{report.summary}</p>
-                        <p className="text-xs text-muted-foreground mt-3">
-                          {report.role || "Role"} · {report.company || "Company"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </main>
@@ -526,35 +512,35 @@ export default function MockInterview() {
       <Footer />
 
       <Dialog open={mockOpen} onOpenChange={setMockOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-none w-screen h-[100dvh] max-h-none rounded-none overflow-y-auto bg-white text-black border-0">
           <DialogHeader>
             <DialogTitle>Mock Interview</DialogTitle>
             <DialogDescription>
               Answer each question, then submit the interview to generate the AI report.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-xl border-2 border-border bg-card/80 p-4 max-h-[420px] overflow-y-auto space-y-3 shadow-sm">
+          <div className="rounded-xl border-2 border-black bg-white p-4 max-h-[420px] overflow-y-auto space-y-3 shadow-[6px_6px_0_0_#000000]">
             {mockMessages.length === 0 && (
-              <p className="text-sm text-muted-foreground">Starting interview…</p>
+              <p className="text-sm text-black/60">Starting interview…</p>
             )}
             {mockMessages.map((msg, i) => (
               <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
                 {msg.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-200 flex items-center justify-center shrink-0 border-2 border-black">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                 )}
                 <div
                   className={`max-w-[85%] p-3 text-sm rounded-lg ${
                     msg.role === "user"
-                      ? "bg-primary/10 text-foreground border border-primary/20"
-                      : "bg-card border border-border shadow-sm"
+                      ? "bg-orange-100 text-black border-2 border-black"
+                      : "bg-white border-2 border-black"
                   }`}
                 >
                   <p className="whitespace-pre-line">{msg.content}</p>
                 </div>
                 {msg.role === "user" && (
-                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 border border-border">
+                  <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center shrink-0 border-2 border-black">
                     <User className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
@@ -562,10 +548,10 @@ export default function MockInterview() {
             ))}
             {mockLoading && (
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                <div className="w-8 h-8 rounded-lg bg-emerald-200 flex items-center justify-center shrink-0 border-2 border-black">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
-                <div className="p-3 bg-card border border-border rounded-lg shadow-sm">
+                <div className="p-3 bg-white border-2 border-black rounded-lg">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               </div>
@@ -576,17 +562,17 @@ export default function MockInterview() {
               value={mockInput}
               onChange={(e) => setMockInput(e.target.value)}
               placeholder="Type your answer..."
-              className="min-h-[80px] border-2 border-border rounded-xl bg-background"
+              className="min-h-[80px] border-2 border-black rounded-xl bg-white"
             />
             <Button
-              className="h-10 self-end"
+              className="h-10 self-end border-2 border-black bg-black text-white hover:bg-white hover:text-black"
               onClick={sendMockMessage}
               disabled={mockLoading || !mockSessionId || submitted}
             >
               Send
             </Button>
             <Button
-              className="h-10 self-end"
+              className="h-10 self-end border-2 border-black bg-white text-black hover:bg-black hover:text-white"
               variant="outline"
               onClick={submitInterview}
               disabled={
@@ -598,8 +584,67 @@ export default function MockInterview() {
               {submitLoading ? submitStep || "Submitting..." : "Submit Interview"}
             </Button>
           </div>
-          <div className="space-y-3">
-            <VoiceRecorder onStateChange={setSpeechState} active={mockOpen && !submitted} />
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="space-y-3">
+                <VoiceRecorder onStateChange={setSpeechState} active={mockOpen && !submitted} />
+                <div className="rounded-xl border-2 border-border bg-card/80 p-3 shadow-sm">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Live Emotion Metrics</span>
+                    <span>{emotionDisplay?.label || "Analyzing"}</span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Confidence</span>
+                        <span>{Math.round(emotionDisplay?.confidence || 0)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted">
+                        <div
+                          className="h-1.5 rounded-full bg-emerald-400"
+                          style={{ width: `${Math.round(emotionDisplay?.confidence || 0)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Stress</span>
+                        <span>{Math.round(emotionDisplay?.stress || 0)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted">
+                        <div
+                          className="h-1.5 rounded-full bg-rose-400"
+                          style={{ width: `${Math.round(emotionDisplay?.stress || 0)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Engagement</span>
+                        <span>{Math.round(emotionDisplay?.engagement || 0)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted">
+                        <div
+                          className="h-1.5 rounded-full bg-sky-400"
+                          style={{ width: `${Math.round(emotionDisplay?.engagement || 0)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="w-full">
+                <FaceCamera
+                  active={mockOpen && !submitted}
+                  onSample={handleEmotionSample}
+                  onDisplaySample={setEmotionDisplay}
+                  containerClassName="w-full"
+                  frameClassName="w-full aspect-video rounded-xl border-2 border-black bg-black/70 shadow-[6px_6px_0_0_#000000] overflow-hidden relative"
+                  showMetrics={false}
+                  showLabelBadge={false}
+                />
+              </div>
+            </div>
             {finalReport && (
               <InterviewStats
                 confidence={finalReport.confidence}
