@@ -17,6 +17,7 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/fires
 import { uploadProfileImage } from "@/lib/upload-file";
 import { Upload } from "lucide-react";
 import { FREE_ALUMNI_SESSION_LIMIT, type MembershipTier, normalizeMembershipTier } from "@/lib/membership";
+import { getApiBase } from "@/lib/api-base";
 
 export default function Profile() {
   const { user, role, isAdmin } = useAuth();
@@ -33,14 +34,46 @@ export default function Profile() {
   const [companyName, setCompanyName] = useState("");
   const [position, setPosition] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [profileImageDisplayUrl, setProfileImageDisplayUrl] = useState("");
   const [membershipTier, setMembershipTier] = useState<MembershipTier>("free");
   const [alumniSessionsUsed, setAlumniSessionsUsed] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const isEditingRef = useRef(false);
+  const [profileRole, setProfileRole] = useState<"student" | "alumni" | null>(null);
 
   useEffect(() => {
     isEditingRef.current = isEditing;
   }, [isEditing]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const isLikelyS3 = (url: string) => /amazonaws\.com/i.test(url) || /\.s3\./i.test(url);
+    const resolveProfileImage = async () => {
+      if (!profileImageUrl) {
+        setProfileImageDisplayUrl("");
+        return;
+      }
+      if (!isLikelyS3(profileImageUrl)) {
+        setProfileImageDisplayUrl(profileImageUrl);
+        return;
+      }
+      try {
+        const res = await fetch(`${getApiBase()}/api/presign?url=${encodeURIComponent(profileImageUrl)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+          setProfileImageDisplayUrl(profileImageUrl);
+          return;
+        }
+        if (!cancelled) setProfileImageDisplayUrl(data.url);
+      } catch {
+        if (!cancelled) setProfileImageDisplayUrl(profileImageUrl);
+      }
+    };
+    resolveProfileImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileImageUrl]);
 
   const applyProfileData = (data: {
     name?: string;
@@ -88,11 +121,16 @@ export default function Profile() {
               profileImageUrl?: string;
               membershipTier?: string;
               alumniSessionsUsed?: number;
+              role?: "student" | "alumni";
             })
           : null;
 
         if (data && !isEditingRef.current) {
           applyProfileData(data);
+        }
+
+        if (data?.role) {
+          setProfileRole(data.role);
         }
 
         const hasCoreProfile = Boolean(
@@ -138,6 +176,11 @@ export default function Profile() {
 
           if (!isEditingRef.current) {
             applyProfileData(roleData);
+          }
+
+          if (!profileRole) {
+            const inferredRole = roleHint || role || (roleData.companyName || roleData.position ? "alumni" : "student");
+            setProfileRole(inferredRole);
           }
 
           await setDoc(
@@ -212,6 +255,7 @@ export default function Profile() {
     if (!user) return;
     setLoading(true);
     try {
+      const roleToSave = role || profileRole;
       const payload = {
         name,
         email: user.email || "",
@@ -230,12 +274,12 @@ export default function Profile() {
 
       await setDoc(doc(db, "users", user.uid), payload, { merge: true });
 
-      if (role) {
+      if (roleToSave) {
         await setDoc(
-          doc(db, role === "alumni" ? "alumni" : "students", user.uid),
+          doc(db, roleToSave === "alumni" ? "alumni" : "students", user.uid),
           {
             ...payload,
-            role,
+            role: roleToSave,
           },
           { merge: true },
         );
@@ -252,21 +296,26 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-secondary/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-dots opacity-40" />
+      <main className="section-padding relative overflow-hidden">
+        <div className="absolute inset-0 bg-dots opacity-30" />
         <div className="container relative max-w-3xl">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">Profile</h1>
-          <p className="text-muted-foreground mb-6">
-            Update your profile details. Role: {role || "unknown"}
-          </p>
+          <div className="paper-card card-hover rounded-2xl mb-6">
+            <span className="sticker-green-soft mb-3 inline-flex">Profile</span>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+              Your <span className="underline-sketch">account details</span>
+            </h1>
+            <p className="text-muted-foreground">
+              Update your profile details. Role: {role || profileRole || "unknown"}
+            </p>
+          </div>
 
-          <div className="rounded-xl border-2 border-border bg-card p-5 space-y-4">
+          <div className="paper-card rounded-2xl space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Profile picture</label>
               <div className="mt-2 flex items-center gap-4">
-                {profileImageUrl ? (
+                {profileImageDisplayUrl ? (
                   <img
-                    src={profileImageUrl}
+                    src={profileImageDisplayUrl}
                     alt={name || user?.email || "Profile"}
                     className="h-16 w-16 rounded-full object-cover border border-border"
                   />
@@ -340,7 +389,7 @@ export default function Profile() {
                 placeholder="Backend, AI/ML, Product"
               />
             </div>
-            {role === "student" && (
+            {(role || profileRole) === "student" && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Target</label>
                 <Input
@@ -354,7 +403,7 @@ export default function Profile() {
                 />
               </div>
             )}
-            {role === "student" && (
+            {(role || profileRole) === "student" && (
               <>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">College name</label>
@@ -394,7 +443,7 @@ export default function Profile() {
                 </div>
               </>
             )}
-            {role === "alumni" && (
+            {(role || profileRole) === "alumni" && (
               <>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Company name</label>

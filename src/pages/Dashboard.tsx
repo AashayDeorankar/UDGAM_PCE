@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/api-base";
+import { useNavigate } from "react-router-dom";
 import {
   loadAssessmentResults,
   loadInterviewReports,
@@ -28,6 +29,15 @@ import {
 } from "@/lib/interview-reports";
 
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
+const dashboardColors = {
+  primary: "hsl(var(--primary))",
+  accent: "hsl(var(--accent))",
+  primarySoft: "hsl(var(--primary) / 0.55)",
+  accentSoft: "hsl(var(--accent) / 0.55)",
+  primaryStrong: "hsl(var(--primary) / 0.85)",
+  accentStrong: "hsl(var(--accent) / 0.85)",
+};
 
 function formatDate(value?: { toDate: () => Date } | null) {
   if (!value?.toDate) return "";
@@ -45,8 +55,14 @@ function inferInterviewType(topics: string) {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<InterviewReportRecord[]>([]);
+    useEffect(() => {
+      if (role === "alumni") {
+        navigate("/alumni/connect", { replace: true });
+      }
+    }, [navigate, role]);
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResultRecord[]>([]);
   const [summary, setSummary] = useState<{ summary: string; strengths: string[]; weaknesses: string[]; suggestions: string[] } | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -145,10 +161,10 @@ export default function Dashboard() {
   const radialData = useMemo(() => {
     if (reports.length === 0) return [];
     return [
-      { name: "Voice Clarity", value: metrics.communication, fill: "hsl(140 70% 45%)" },
-      { name: "Speaking Speed", value: metrics.fluency, fill: "hsl(32 85% 55%)" },
-      { name: "Confidence", value: metrics.confidence, fill: "hsl(210 85% 55%)" },
-      { name: "Filler Words", value: clamp(100 - metrics.confidence), fill: "hsl(0 70% 55%)" },
+      { name: "Voice Clarity", value: metrics.communication, fill: dashboardColors.primary },
+      { name: "Speaking Speed", value: metrics.fluency, fill: dashboardColors.accent },
+      { name: "Confidence", value: metrics.confidence, fill: dashboardColors.primaryStrong },
+      { name: "Filler Words", value: clamp(100 - metrics.confidence), fill: dashboardColors.accentStrong },
     ];
   }, [reports, metrics]);
 
@@ -251,7 +267,13 @@ export default function Dashboard() {
     return entries.map(([name, value], index) => ({
       name,
       value,
-      fill: ["hsl(210 85% 55%)", "hsl(0 70% 55%)", "hsl(140 70% 45%)", "hsl(32 85% 55%)", "hsl(260 70% 60%)"][index % 5],
+      fill: [
+        dashboardColors.primary,
+        dashboardColors.accent,
+        dashboardColors.primarySoft,
+        dashboardColors.accentSoft,
+        dashboardColors.primaryStrong,
+      ][index % 5],
     }));
   }, [emotionAggregates]);
 
@@ -259,17 +281,17 @@ export default function Dashboard() {
     const averages = emotionAggregates.averages;
     if (!Object.keys(averages).length) return [];
     return [
-      { name: "Eye Contact", value: averages.eyeContact ?? 0, fill: "hsl(210 85% 55%)" },
-      { name: "Confidence", value: averages.confidence ?? 0, fill: "hsl(140 70% 45%)" },
-      { name: "Smile", value: averages.smile ?? 0, fill: "hsl(32 85% 55%)" },
-      { name: "Attention", value: averages.attention ?? 0, fill: "hsl(260 70% 60%)" },
+      { name: "Eye Contact", value: averages.eyeContact ?? 0, fill: dashboardColors.primary },
+      { name: "Confidence", value: averages.confidence ?? 0, fill: dashboardColors.primaryStrong },
+      { name: "Smile", value: averages.smile ?? 0, fill: dashboardColors.accent },
+      { name: "Attention", value: averages.attention ?? 0, fill: dashboardColors.accentSoft },
     ];
   }, [emotionAggregates]);
 
   const latestReport = reports[0];
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-white text-black personal-dashboard-theme">
       <Navbar />
       <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#00000010_1px,transparent_1px)] [background-size:18px_18px]" />
@@ -280,7 +302,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <p className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-emerald-200 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+            <p className="inline-flex items-center gap-2 rounded-full border-2 border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.2)] px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--primary))]">
               AI Mock Interview Dashboard
             </p>
             <h1 className="text-3xl md:text-4xl font-black mt-4">Performance dashboard</h1>
@@ -318,7 +340,7 @@ export default function Dashboard() {
                 <p className="text-sm text-black/60 mt-6">Complete interviews to unlock performance analytics.</p>
               ) : (
                 <ChartContainer
-                  config={{ score: { label: "Score", color: "hsl(210 85% 55%)" } }}
+                  config={{ score: { label: "Score", color: dashboardColors.primary } }}
                   className="h-64 mt-4"
                 >
                   <RadarChart data={radarData}>
@@ -339,7 +361,7 @@ export default function Dashboard() {
                 <p className="text-sm text-black/60 mt-6">Speech analytics appear after submissions.</p>
               ) : (
                 <ChartContainer
-                  config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }}
+                  config={{ value: { label: "Value", color: dashboardColors.primary } }}
                   className="h-64 mt-4"
                 >
                   <RadialBarChart innerRadius={40} outerRadius={120} data={radialData} startAngle={90} endAngle={-270}>
@@ -364,8 +386,8 @@ export default function Dashboard() {
               ) : (
                 <ChartContainer
                   config={{
-                    overall: { label: "Interview Score", color: "hsl(140 70% 45%)" },
-                    confidence: { label: "Confidence", color: "hsl(210 85% 55%)" },
+                    overall: { label: "Interview Score", color: dashboardColors.primary },
+                    confidence: { label: "Confidence", color: dashboardColors.accent },
                   }}
                   className="w-full h-80 md:h-96 mt-4 aspect-auto justify-start"
                 >
@@ -392,7 +414,7 @@ export default function Dashboard() {
                 <p className="text-sm text-black/60 mt-6">Complete assessment tests to see your score trend.</p>
               ) : (
                 <ChartContainer
-                  config={{ score: { label: "Assessment Score", color: "hsl(140 70% 45%)" } }}
+                  config={{ score: { label: "Assessment Score", color: dashboardColors.primary } }}
                   className="w-full h-72 md:h-80 mt-4 aspect-auto justify-start"
                 >
                   <LineChart data={assessmentLine} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
@@ -422,8 +444,8 @@ export default function Dashboard() {
               ) : (
                 <ChartContainer
                   config={{
-                    score: { label: "Strength", color: "hsl(140 70% 45%)" },
-                    gap: { label: "Gap", color: "hsl(0 70% 55%)" },
+                    score: { label: "Strength", color: dashboardColors.primary },
+                    gap: { label: "Gap", color: dashboardColors.accent },
                   }}
                   className="h-64 mt-4"
                 >
@@ -485,7 +507,7 @@ export default function Dashboard() {
                   <p className="text-sm text-black/60 mt-6">Emotion analytics appear after camera sessions.</p>
                 ) : (
                   <ChartContainer
-                    config={{ score: { label: "Score", color: "hsl(210 85% 55%)" } }}
+                    config={{ score: { label: "Score", color: dashboardColors.primary } }}
                     className="h-64 mt-4"
                   >
                     <RadarChart data={emotionRadar}>
@@ -507,9 +529,9 @@ export default function Dashboard() {
                 ) : (
                   <ChartContainer
                     config={{
-                      confidence: { label: "Confidence", color: "hsl(210 85% 55%)" },
-                      stress: { label: "Stress", color: "hsl(0 70% 55%)" },
-                      engagement: { label: "Engagement", color: "hsl(140 70% 45%)" },
+                      confidence: { label: "Confidence", color: dashboardColors.primary },
+                      stress: { label: "Stress", color: dashboardColors.accent },
+                      engagement: { label: "Engagement", color: dashboardColors.primaryStrong },
                     }}
                     className="h-64 mt-4"
                   >
@@ -534,7 +556,7 @@ export default function Dashboard() {
                   {emotionRadial.length === 0 ? (
                     <p className="text-sm text-black/60 mt-6">No face analysis data yet.</p>
                   ) : (
-                    <ChartContainer config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }} className="h-64 mt-4">
+                    <ChartContainer config={{ value: { label: "Value", color: dashboardColors.primary } }} className="h-64 mt-4">
                       <RadialBarChart innerRadius={40} outerRadius={120} data={emotionRadial} startAngle={90} endAngle={-270}>
                         <PolarGrid radialLines={false} stroke="hsl(var(--border))" />
                         <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
@@ -633,9 +655,9 @@ export default function Dashboard() {
 
           <section className="grid gap-6 xl:grid-cols-3 mt-8">
             {[
-              { title: "Confidence Trend", key: "confidence", color: "hsl(210 85% 55%)" },
-              { title: "Communication Trend", key: "communication", color: "hsl(140 70% 45%)" },
-              { title: "Technical Improvement", key: "technical", color: "hsl(32 85% 55%)" },
+              { title: "Confidence Trend", key: "confidence", color: dashboardColors.primary },
+              { title: "Communication Trend", key: "communication", color: dashboardColors.accent },
+              { title: "Technical Improvement", key: "technical", color: dashboardColors.primarySoft },
             ].map((trend) => (
               <div key={trend.key} className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
                 <div className="flex items-center justify-between">

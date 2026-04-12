@@ -28,6 +28,7 @@ import Profile from "./pages/Profile";
 import RequestsPage from "./pages/RequestsPage";
 import PersonalAnalysis from "./pages/PersonalAnalysis";
 import NotFound from "./pages/NotFound";
+import { InboxFab } from "@/components/InboxFab";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <InboxFab />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>

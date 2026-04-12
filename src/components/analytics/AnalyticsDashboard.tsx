@@ -9,10 +9,12 @@ import {
   Cell,
   ComposedChart,
   Line,
+  LineChart,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
   Radar,
+  RadarChart,
   RadialBar,
   RadialBarChart,
   Scatter,
@@ -335,13 +337,13 @@ export function RadarSkills({ gaps }: { gaps: { skill: string; progress: number 
             }}
             className="h-full w-full aspect-auto"
           >
-            <RadialBarChart data={data} innerRadius={20} outerRadius={90}>
+            <RadarChart data={data} outerRadius={90}>
               <PolarGrid stroke={chartColors.border} strokeWidth={1.75} />
               <PolarAngleAxis dataKey="skill" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
               <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-              <RadialBar dataKey="value" fill={chartColors.accent} cornerRadius={0} />
+              <Radar dataKey="value" fill={chartColors.accent} fillOpacity={0.35} stroke={chartColors.primary} />
               <Tooltip content={<ChartTooltipContent formatter={(v) => [v, "Score"]} />} />
-            </RadialBarChart>
+            </RadarChart>
           </ChartContainer>
         </div>
       </div>
@@ -355,11 +357,7 @@ export function LeetCodeChart({ data }: { data: { level: string; value: number }
     label: item.level,
     value: item.value,
   }));
-  const total = mapped.reduce((sum, item) => sum + item.value, 0) || 1;
-  const percentData = mapped.map((item) => ({
-    ...item,
-    percent: Math.round((item.value / total) * 100),
-  }));
+  const countData = mapped;
 
   return (
     <motion.div {...cardMotion} className={cardBase}>
@@ -370,37 +368,17 @@ export function LeetCodeChart({ data }: { data: { level: string; value: number }
           <span className="sticker-outline absolute -top-3 left-3">DIFFICULTY</span>
           <ChartContainer
             config={{
-              easy: { label: "Easy", color: chartColors.muted },
-              medium: { label: "Medium", color: chartColors.primary },
-              hard: { label: "Hard", color: chartColors.muted },
+              percent: { label: "Solved", color: chartColors.accent },
             }}
             className="h-full w-full aspect-auto"
           >
-            <BarChart
-              data={[{ name: "Solved", ...Object.fromEntries(percentData.map((d) => [d.key, d.percent])) }]}
-              layout="vertical"
-              margin={{ top: 8, right: 12, left: 8, bottom: 8 }}
-            >
-              <CartesianGrid horizontal={false} stroke={chartColors.border} strokeWidth={1.75} />
-              <XAxis type="number" domain={[0, 100]} hide />
-              <YAxis dataKey="name" type="category" hide />
-              <Tooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(v, name) => [`${v}%`, name]}
-                  />
-                }
-              />
-              {percentData.map((item) => (
-                <Bar
-                  key={item.key}
-                  dataKey={item.key}
-                  stackId="a"
-                  fill={item.label === "Medium" ? chartColors.accent : chartColors.muted}
-                  radius={0}
-                />
-              ))}
-            </BarChart>
+            <LineChart data={countData} margin={{ top: 8, right: 12, left: 8, bottom: 8 }}>
+              <CartesianGrid vertical={false} stroke={chartColors.border} strokeWidth={1.75} />
+              <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+              <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+              <Tooltip content={<ChartTooltipContent formatter={(v) => [v, "Solved"]} />} />
+              <Line type="linear" dataKey="value" stroke={chartColors.accent} strokeWidth={2} dot={{ r: 4 }} />
+            </LineChart>
           </ChartContainer>
         </div>
       </div>

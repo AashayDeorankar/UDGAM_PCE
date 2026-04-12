@@ -131,7 +131,7 @@ export function FaceCamera({
         </div>
       )}
       <div className={frameClass}>
-        <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
+        <video ref={videoRef} className="h-full w-full object-cover -scale-x-100" muted playsInline />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
       </div>
       {error && (

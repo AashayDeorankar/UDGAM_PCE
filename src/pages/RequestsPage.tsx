@@ -124,13 +124,18 @@ export default function RequestsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-secondary/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-dots opacity-40" />
+      <main className="section-padding relative overflow-hidden">
+        <div className="absolute inset-0 bg-dots opacity-30" />
         <div className="container relative max-w-3xl">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">Requests</h1>
-          <p className="text-muted-foreground mb-6">Manage your incoming and outgoing connection requests.</p>
+          <div className="paper-card card-hover rounded-2xl mb-6">
+            <span className="sticker-green-soft mb-3 inline-flex">Requests</span>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+              Manage <span className="underline-sketch">connections</span>
+            </h1>
+            <p className="text-muted-foreground">Manage your incoming and outgoing connection requests.</p>
+          </div>
 
-          <div className="rounded-xl border-2 border-border bg-card p-5 space-y-5">
+          <div className="paper-card rounded-2xl space-y-5">
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">Incoming Requests</h3>
               {incomingPending.length === 0 ? (
@@ -138,7 +143,7 @@ export default function RequestsPage() {
               ) : (
                 <div className="space-y-2">
                   {incomingPending.map((req) => (
-                    <div key={req.id} className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
+                    <div key={req.id} className="paper-card card-hover rounded-2xl flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-foreground">
                           {getUserLabel(req.requesterId, req.requesterName, req.requesterEmail)}
@@ -146,8 +151,8 @@ export default function RequestsPage() {
                         <p className="text-xs text-muted-foreground">Wants to connect</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => respondToRequest(req.id, "declined")}>Decline</Button>
-                        <Button size="sm" onClick={() => respondToRequest(req.id, "connected")}>Accept</Button>
+                        <Button size="sm" variant="outline" className="btn-punch" onClick={() => respondToRequest(req.id, "declined")}>Decline</Button>
+                        <Button size="sm" className="btn-punch" onClick={() => respondToRequest(req.id, "connected")}>Accept</Button>
                       </div>
                     </div>
                   ))}
@@ -162,7 +167,7 @@ export default function RequestsPage() {
               ) : (
                 <div className="space-y-2">
                   {outgoingPending.map((req) => (
-                    <div key={req.id} className="border border-border rounded-lg p-3">
+                    <div key={req.id} className="paper-card card-hover rounded-2xl">
                       <p className="text-sm font-medium text-foreground">
                         {getUserLabel(req.recipientId, req.recipientName, req.recipientEmail)}
                       </p>
@@ -186,13 +191,14 @@ export default function RequestsPage() {
                       ? getUserLabel(req.recipientId, req.recipientName, req.recipientEmail)
                       : getUserLabel(req.requesterId, req.requesterName, req.requesterEmail);
                     return (
-                      <div key={req.id} className="border border-border rounded-lg p-3 flex items-center justify-between gap-3">
+                      <div key={req.id} className="paper-card card-hover rounded-2xl flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-foreground">{otherName}</p>
                           <p className="text-xs text-muted-foreground">Connected</p>
                         </div>
                         <Button
                           size="sm"
+                          className="btn-punch"
                           onClick={() => {
                             if (!partnerId) return;
                             void openConnectedChat(partnerId, otherEmail || "");

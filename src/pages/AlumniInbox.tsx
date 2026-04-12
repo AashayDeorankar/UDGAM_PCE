@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Search, Send } from "lucide-react";
+import { Loader2, MessageCircle, Search, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getFirestoreDb } from "@/integrations/firebase/config";
 import { getApiBase } from "@/lib/api-base";
@@ -250,54 +250,73 @@ export default function AlumniInbox() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-secondary/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-dots opacity-40" />
+      <main className="section-padding relative overflow-hidden">
+        <div className="absolute inset-0 bg-dots opacity-30" />
         <div className="container relative">
-          <div className="text-center mb-10">
-            <span className="sticker-green-soft mb-4 inline-block">Inbox</span>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              Your <span className="underline-sketch">conversations</span>
-            </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Continue chats with your connected users.
-            </p>
-          </div>
-
-          <div className="max-w-4xl mx-auto rounded-xl border-2 border-border bg-card p-4 md:p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Your Chats</h3>
-              <div className="relative md:w-80">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={chatSearch}
-                  onChange={(e) => setChatSearch(e.target.value)}
-                  placeholder="Search conversations"
-                  className="pl-9"
-                />
+          <div className="grid lg:grid-cols-2 gap-10 items-center mb-12">
+            <div>
+              <span className="sticker-green-soft mb-5 inline-flex">Inbox</span>
+              <h1 className="text-4xl md:text-5xl font-bold leading-[1.1] mb-4">
+                Your <span className="underline-sketch">conversations</span>
+              </h1>
+              <p className="text-muted-foreground text-lg max-w-xl">
+                Continue chats with your connected users and keep everything in one place.
+              </p>
+            </div>
+            <div className="paper-card card-hover rounded-2xl bg-card">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl border-2 border-foreground bg-primary/10 flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Fast replies</p>
+                  <p className="text-xs text-muted-foreground">Stay synced with alumni and peers.</p>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <span className="badge badge-primary">Live chat</span>
+                <span className="badge badge-accent">Verified network</span>
               </div>
             </div>
-            {filteredChatList.length === 0 && (
-              <p className="text-sm text-muted-foreground">No chats yet.</p>
-            )}
-            <div className="space-y-2">
-              {filteredChatList.map((c) => (
-                <button
-                  key={c.chatId}
-                  type="button"
-                  className="w-full text-left border border-border rounded-xl p-3.5 hover:border-primary/50 hover:bg-muted/20 transition-colors"
-                  onClick={() => openChatWith(c.partnerId, c.partnerEmail, c.chatId)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary border border-primary/20 grid place-items-center text-xs font-semibold">
-                      {getInitials(c.partnerEmail)}
+          </div>
+
+          <div className="max-w-5xl mx-auto">
+            <div className="paper-card rounded-2xl">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+                <h3 className="font-semibold text-foreground">Your chats</h3>
+                <div className="relative md:w-80">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    placeholder="Search conversations"
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              {filteredChatList.length === 0 && (
+                <p className="text-sm text-muted-foreground">No chats yet.</p>
+              )}
+              <div className="space-y-3">
+                {filteredChatList.map((c) => (
+                  <button
+                    key={c.chatId}
+                    type="button"
+                    className="paper-card card-hover rounded-2xl w-full text-left"
+                    onClick={() => openChatWith(c.partnerId, c.partnerEmail, c.chatId)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 text-primary border border-primary/20 grid place-items-center text-xs font-semibold">
+                        {getInitials(c.partnerEmail)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{c.partnerEmail}</p>
+                        <p className="text-xs text-muted-foreground">Tap to open conversation</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{c.partnerEmail}</p>
-                      <p className="text-xs text-muted-foreground">Tap to open conversation</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

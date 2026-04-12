@@ -178,11 +178,18 @@ export default function AlumniConnect() {
   const renderUserCard = (person: ConnectUser) => {
     const status = connections[person.id];
     return (
-      <div key={person.id} className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">{person.name || person.email || "User"}</p>
+      <div key={person.id} className="paper-card card-hover rounded-2xl flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className={`badge ${person.role === "student" ? "badge-primary" : "badge-accent"}`}>
+              {person.role}
+            </span>
+            <p className="text-sm font-semibold text-foreground">
+              {person.name || person.email || "User"}
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground">
-            {person.role === "student" ? "Student" : "Alumni"} • {person.domain || "General"}
+            {person.domain || "General"}
           </p>
           {person.role === "student" ? (
             <p className="text-xs text-muted-foreground">
@@ -199,7 +206,7 @@ export default function AlumniConnect() {
             <span className="text-xs text-muted-foreground">Connected</span>
             <Button
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 btn-punch"
               onClick={() => openConnectedChat(person.id, person.email, person.name || "")}
             >
               <MessageCircle className="h-3.5 w-3.5" />
@@ -209,7 +216,7 @@ export default function AlumniConnect() {
         ) : (
           <Button
             size="sm"
-            className="gap-1.5"
+            className="gap-1.5 btn-punch"
             onClick={() => sendConnectionRequest(person.id, person.email, person.name || "")}
             disabled={status === "pending"}
           >
@@ -225,22 +232,40 @@ export default function AlumniConnect() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-secondary/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-dots opacity-40" />
+      <main className="section-padding relative overflow-hidden">
+        <div className="absolute inset-0 bg-dots opacity-30" />
         <div className="container relative">
-          <div className="text-center mb-10">
-            <span className="sticker-green-soft mb-4 inline-block">Connect</span>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              Connect with <span className="underline-sketch">students and alumni</span>
-            </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Search profiles, filter by college, and send connection requests.
-            </p>
+          <div className="grid lg:grid-cols-2 gap-10 items-center mb-12">
+            <div>
+              <span className="sticker-green-soft mb-5 inline-flex">Connect</span>
+              <h1 className="text-4xl md:text-5xl font-bold leading-[1.1] mb-4">
+                Connect with <span className="underline-sketch">students and alumni</span>
+              </h1>
+              <p className="text-muted-foreground text-lg max-w-xl">
+                Search profiles, filter by college, and send connection requests in minutes.
+              </p>
+            </div>
+            <div className="paper-card card-hover rounded-2xl bg-card">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl border-2 border-foreground bg-primary/10 flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Smart matching</p>
+                  <p className="text-xs text-muted-foreground">Find peers by domain, college, and role.</p>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <span className="badge badge-primary">Verified students</span>
+                <span className="badge badge-accent">Industry alumni</span>
+              </div>
+            </div>
           </div>
 
-          <div className="max-w-4xl mx-auto rounded-xl border-2 border-border bg-card p-4 md:p-5">
+          <div className="max-w-5xl mx-auto">
+            <div className="paper-card rounded-2xl">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Connect</h3>
+                <h3 className="font-semibold text-foreground">Find your people</h3>
                 <div className="flex flex-col gap-2 md:flex-row md:items-center">
                   <Input
                     value={search}
@@ -277,6 +302,7 @@ export default function AlumniConnect() {
                 </div>
               </div>
             </div>
+          </div>
         </div>
       </main>
 

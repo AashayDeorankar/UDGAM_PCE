@@ -104,7 +104,7 @@ export default function PersonalAnalysis() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background personal-dashboard-theme">
       <Navbar />
       <main className="section-padding">
         <div className="container max-w-6xl space-y-8">

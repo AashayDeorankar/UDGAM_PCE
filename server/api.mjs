@@ -54,6 +54,7 @@ const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
 const { setupSocketServer } = await import("./socket.mjs");
 const { getAdminAuth, extractBearerToken } = await import("./firebase-admin.mjs");
 const { handleWelcomeEmail } = await import("./welcome-email.mjs");
+const { handlePersonalAnalysis } = await import("./personal-analysis.mjs");
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");

@@ -161,40 +161,43 @@ export function UpgradePlanModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden border-0">
-        <DialogHeader>
-          <div className="px-6 pt-6 pb-4 bg-[radial-gradient(120%_120%_at_50%_0%,hsl(var(--primary)/0.35)_0%,hsl(var(--background))_55%)] text-foreground border-b border-border">
-            <DialogTitle className="text-foreground">Choose Your Plan</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Current plan: {currentTier.toUpperCase()}. Upgrade to unlock more mentor access.
-            </DialogDescription>
-          </div>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden border-2 border-foreground bg-background">
+        <div className="relative">
+          <div className="absolute inset-0 bg-dots opacity-30" />
+          <DialogHeader>
+            <div className="relative px-6 pt-6 pb-5 border-b-2 border-foreground bg-card">
+              <span className="sticker-green-soft mb-3 inline-flex">Pricing</span>
+              <DialogTitle className="text-foreground text-2xl">Choose Your Plan</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Current plan: {currentTier.toUpperCase()}. Upgrade to unlock more mentor access.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
 
-        <div className="p-4 md:p-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="relative p-4 md:p-6">
+            <div className="grid gap-4 md:grid-cols-3">
             {plans.map((plan) => {
               const action = getTierButton(plan.id);
               const ctaClassName =
                 plan.id === "gold"
-                  ? "w-full bg-[#ff6b4a] text-white hover:bg-[#ef5a38] border-[#ff6b4a]"
+                  ? "w-full bg-accent text-accent-foreground border-accent"
                   : plan.id === "platinum"
-                    ? "w-full border-foreground/40 text-foreground hover:bg-muted"
+                    ? "w-full border-foreground text-foreground hover:bg-muted"
                     : "w-full";
 
               return (
                 <div
                   key={plan.id}
-                  className={`rounded-xl border p-5 bg-card flex flex-col transition-all duration-200 ${
+                  className={`paper-card card-hover rounded-2xl flex flex-col transition-all duration-200 ${
                     plan.highlighted
-                      ? "border-primary shadow-[0_0_0_1px_hsl(var(--primary)),0_12px_30px_hsl(var(--primary)/0.18)]"
-                      : "border-border hover:border-primary/40 hover:shadow-md"
+                      ? "border-primary"
+                      : "border-border"
                   }`}
                 >
                   <div className="mb-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{plan.badge}</p>
-                      {plan.highlighted && <Crown className="h-4 w-4 text-amber-500" />}
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{plan.badge}</p>
+                      {plan.highlighted && <Crown className="h-4 w-4 text-accent" />}
                     </div>
                     <p className="text-2xl font-semibold mt-2">{plan.title}</p>
                     <div className="mt-2 flex items-end gap-1">
@@ -207,7 +210,7 @@ export function UpgradePlanModal({
                   <ul className="space-y-2 text-sm text-foreground/90 flex-1">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2">
-                        <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                         <span>{feature}</span>
                       </li>
                     ))}
@@ -216,7 +219,7 @@ export function UpgradePlanModal({
                   <div className="mt-5">
                     {action.href ? (
                       <Button
-                        className={ctaClassName}
+                        className={`${ctaClassName} btn-punch`}
                         variant={action.variant}
                         asChild
                         disabled={action.disabled}
@@ -225,7 +228,7 @@ export function UpgradePlanModal({
                       </Button>
                     ) : (
                       <Button
-                        className={ctaClassName}
+                        className={`${ctaClassName} btn-punch`}
                         variant={action.variant}
                         disabled={action.disabled}
                         onClick={action.onClick}
@@ -240,15 +243,16 @@ export function UpgradePlanModal({
             })}
           </div>
 
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            No credit card required for activation request. Billing and plan activation are handled by the team.
-          </p>
-        </div>
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              No credit card required for activation request. Billing and plan activation are handled by the team.
+            </p>
+          </div>
 
-        <div className="px-6 pb-6 pt-1 flex justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+          <div className="relative px-6 pb-6 pt-1 flex justify-end">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="btn-punch">
+              Close
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

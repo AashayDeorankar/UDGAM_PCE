@@ -285,6 +285,14 @@
 }
 
 @layer utilities {
+  .personal-dashboard-theme {
+    --primary: 142 72% 30%;
+    --primary-foreground: 60 9% 98%;
+    --accent: 28 98% 48%;
+    --accent-foreground: 60 9% 98%;
+    --ring: 142 72% 30%;
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-accent;
   }
