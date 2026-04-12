@@ -9,8 +9,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   PolarAngleAxis,
   PolarGrid,
   Radar,
@@ -22,7 +20,12 @@ import {
 } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/api-base";
-import { loadInterviewReports, type InterviewReportRecord } from "@/lib/interview-reports";
+import {
+  loadAssessmentResults,
+  loadInterviewReports,
+  type AssessmentResultRecord,
+  type InterviewReportRecord,
+} from "@/lib/interview-reports";
 
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -44,6 +47,7 @@ function inferInterviewType(topics: string) {
 export default function Dashboard() {
   const { user } = useAuth();
   const [reports, setReports] = useState<InterviewReportRecord[]>([]);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResultRecord[]>([]);
   const [summary, setSummary] = useState<{ summary: string; strengths: string[]; weaknesses: string[]; suggestions: string[] } | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const lastSummaryRef = useRef<string | null>(null);
@@ -51,6 +55,11 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user?.uid) return;
     loadInterviewReports(user.uid, 50).then(setReports);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    loadAssessmentResults(user.uid, 50).then(setAssessmentResults);
   }, [user?.uid]);
 
   useEffect(() => {
@@ -159,21 +168,14 @@ export default function Dashboard() {
     }));
   }, [reports]);
 
-  const pieData = useMemo(() => {
-    if (reports.length === 0) return [];
-    const counts: Record<string, number> = { Technical: 0, Behavioral: 0, HR: 0, "System Design": 0 };
-    reports.forEach((report) => {
-      const type = inferInterviewType(report.topics || "");
-      counts[type] = (counts[type] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .filter(([, value]) => value > 0)
-      .map(([name, value], index) => ({
-        name,
-        value,
-        fill: ["hsl(210 85% 55%)", "hsl(32 85% 55%)", "hsl(140 70% 45%)", "hsl(0 70% 55%)"][index % 4],
-      }));
-  }, [reports]);
+  const assessmentLine = useMemo(() => {
+    if (assessmentResults.length === 0) return [];
+    return assessmentResults.map((result) => ({
+      label: formatDate(result.createdAt ?? null),
+      score: clamp(result.score),
+      assessmentLabel: result.label,
+    }));
+  }, [assessmentResults]);
 
   const strengthData = useMemo(() => {
     if (reports.length === 0) return [];
@@ -267,10 +269,10 @@ export default function Dashboard() {
   const latestReport = reports[0];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white text-black">
       <Navbar />
-      <main className="pt-24 pb-16 bg-secondary/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-dots opacity-40" />
+      <main className="pt-20 pb-16 md:pt-24 md:pb-20 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#00000010_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <motion.div
             className="mb-10"
@@ -278,9 +280,11 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">AI Mock Interview Dashboard</p>
-            <h1 className="text-3xl md:text-4xl font-semibold mt-3 text-foreground">Performance dashboard</h1>
-            <p className="text-muted-foreground mt-2 max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-emerald-200 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+              AI Mock Interview Dashboard
+            </p>
+            <h1 className="text-3xl md:text-4xl font-black mt-4">Performance dashboard</h1>
+            <p className="text-black/70 mt-2 max-w-2xl">
               Track mock interview performance, speech analytics, and AI coaching insights based on your latest sessions.
             </p>
           </motion.div>
@@ -294,21 +298,24 @@ export default function Dashboard() {
               { label: "Technical Score", value: `${metrics.technical}%` },
               { label: "Last Interview Date", value: metrics.lastDate || "" },
             ].map((card) => (
-              <div key={card.label} className="rounded-2xl border-2 border-border bg-card p-4 shadow-sm">
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-                <p className="text-lg font-semibold mt-2 text-foreground">{card.value || "-"}</p>
+              <div
+                key={card.label}
+                className="border-2 border-black bg-white p-4 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]"
+              >
+                <p className="text-[0.65rem] uppercase tracking-[0.2em] text-black/60">{card.label}</p>
+                <p className="text-lg font-semibold mt-2">{card.value || "-"}</p>
               </div>
             ))}
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Overall Performance</h2>
-                <span className="text-xs text-muted-foreground">Radar Chart</span>
+                <h2 className="text-lg font-semibold">Overall Performance</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">Radar Chart</span>
               </div>
               {radarData.length === 0 ? (
-                <p className="text-sm text-muted-foreground mt-6">Complete interviews to unlock performance analytics.</p>
+                <p className="text-sm text-black/60 mt-6">Complete interviews to unlock performance analytics.</p>
               ) : (
                 <ChartContainer
                   config={{ score: { label: "Score", color: "hsl(210 85% 55%)" } }}
@@ -323,13 +330,13 @@ export default function Dashboard() {
                 </ChartContainer>
               )}
             </div>
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Speech Analytics</h2>
-                <span className="text-xs text-muted-foreground">Radial Bar Chart</span>
+                <h2 className="text-lg font-semibold">Speech Analytics</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">Radial Bar</span>
               </div>
               {radialData.length === 0 ? (
-                <p className="text-sm text-muted-foreground mt-6">Speech analytics appear after submissions.</p>
+                <p className="text-sm text-black/60 mt-6">Speech analytics appear after submissions.</p>
               ) : (
                 <ChartContainer
                   config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }}
@@ -346,21 +353,21 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr] mt-8">
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+          <section className="grid gap-6 mt-8">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Performance Over Time</h2>
-                <span className="text-xs text-muted-foreground">Line Chart</span>
+                <h2 className="text-lg font-semibold">Performance Over Time</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">Line Chart</span>
               </div>
               {lineData.length === 0 ? (
-                <p className="text-sm text-muted-foreground mt-6">No timeline data yet.</p>
+                <p className="text-sm text-black/60 mt-6">No timeline data yet.</p>
               ) : (
                 <ChartContainer
                   config={{
                     overall: { label: "Interview Score", color: "hsl(140 70% 45%)" },
                     confidence: { label: "Confidence", color: "hsl(210 85% 55%)" },
                   }}
-                  className="h-72 mt-4"
+                  className="h-80 md:h-96 mt-4"
                 >
                   <LineChart data={lineData} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -373,35 +380,45 @@ export default function Dashboard() {
                 </ChartContainer>
               )}
             </div>
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+          </section>
+
+          <section className="grid gap-6 mt-8">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Interview Type Distribution</h2>
-                <span className="text-xs text-muted-foreground">Pie Chart</span>
+                <h2 className="text-lg font-semibold">Assessment Scores Over Time</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">Line Chart</span>
               </div>
-              {pieData.length === 0 ? (
-                <p className="text-sm text-muted-foreground mt-6">No interview types yet.</p>
+              {assessmentLine.length === 0 ? (
+                <p className="text-sm text-black/60 mt-6">Complete assessment tests to see your score trend.</p>
               ) : (
                 <ChartContainer
-                  config={{ value: { label: "Count", color: "hsl(210 85% 55%)" } }}
-                  className="h-64 mt-4"
+                  config={{ score: { label: "Assessment Score", color: "hsl(140 70% 45%)" } }}
+                  className="h-72 md:h-80 mt-4"
                 >
-                  <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} />
-                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                  </PieChart>
+                  <LineChart data={assessmentLine} margin={{ left: 8, right: 8, top: 12, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} domain={[0, 100]} />
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      formatter={(value) => [value, "Score"]}
+                      labelFormatter={(_, payload) => payload?.[0]?.payload?.assessmentLabel || ""}
+                    />
+                    <Line type="monotone" dataKey="score" stroke="var(--color-score)" strokeWidth={2} dot={false} />
+                  </LineChart>
                 </ChartContainer>
               )}
             </div>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2 mt-8">
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Strength vs Weakness</h2>
-                <span className="text-xs text-muted-foreground">Bar Chart</span>
+                <h2 className="text-lg font-semibold">Strength vs Weakness</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">Bar Chart</span>
               </div>
               {strengthData.length === 0 ? (
-                <p className="text-sm text-muted-foreground mt-6">No strength data yet.</p>
+                <p className="text-sm text-black/60 mt-6">No strength data yet.</p>
               ) : (
                 <ChartContainer
                   config={{
@@ -422,30 +439,30 @@ export default function Dashboard() {
                 </ChartContainer>
               )}
             </div>
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">AI Performance Summary</h2>
-                <span className="text-xs text-muted-foreground">OpenRouter</span>
+                <h2 className="text-lg font-semibold">AI Performance Summary</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">OpenRouter</span>
               </div>
-              {summaryLoading && <p className="text-sm text-muted-foreground mt-4">Generating summary…</p>}
+              {summaryLoading && <p className="text-sm text-black/60 mt-4">Generating summary…</p>}
               {!summaryLoading && !summary && (
-                <p className="text-sm text-muted-foreground mt-4">Complete interviews to generate AI insights.</p>
+                <p className="text-sm text-black/60 mt-4">Complete interviews to generate AI insights.</p>
               )}
               {summary && (
                 <div className="mt-4 space-y-4">
-                  <p className="text-sm text-foreground">{summary.summary}</p>
+                  <p className="text-sm">{summary.summary}</p>
                   <div className="grid gap-3 text-sm">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Strengths</p>
-                      <p className="text-foreground">{summary.strengths.join(", ") || "-"}</p>
+                      <p className="text-xs uppercase tracking-wide text-black/60">Strengths</p>
+                      <p>{summary.strengths.join(", ") || "-"}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Weaknesses</p>
-                      <p className="text-foreground">{summary.weaknesses.join(", ") || "-"}</p>
+                      <p className="text-xs uppercase tracking-wide text-black/60">Weaknesses</p>
+                      <p>{summary.weaknesses.join(", ") || "-"}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Suggestions</p>
-                      <p className="text-foreground">{summary.suggestions.join(", ") || "-"}</p>
+                      <p className="text-xs uppercase tracking-wide text-black/60">Suggestions</p>
+                      <p>{summary.suggestions.join(", ") || "-"}</p>
                     </div>
                   </div>
                 </div>
@@ -455,17 +472,17 @@ export default function Dashboard() {
 
           <section className="mt-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Emotion Analytics</h2>
-              <span className="text-xs text-muted-foreground">Face analysis</span>
+              <h2 className="text-lg font-semibold">Emotion Analytics</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-black/60">Face analysis</span>
             </div>
             <div className="grid gap-6 xl:grid-cols-2">
-              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">Emotional Performance</h3>
-                  <span className="text-xs text-muted-foreground">Radar Chart</span>
+                  <h3 className="text-lg font-semibold">Emotional Performance</h3>
+                  <span className="text-xs uppercase tracking-[0.2em] text-black/60">Radar Chart</span>
                 </div>
                 {emotionRadar.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-6">Emotion analytics appear after camera sessions.</p>
+                  <p className="text-sm text-black/60 mt-6">Emotion analytics appear after camera sessions.</p>
                 ) : (
                   <ChartContainer
                     config={{ score: { label: "Score", color: "hsl(210 85% 55%)" } }}
@@ -480,13 +497,13 @@ export default function Dashboard() {
                   </ChartContainer>
                 )}
               </div>
-              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">Emotion Timeline</h3>
-                  <span className="text-xs text-muted-foreground">Line Chart</span>
+                  <h3 className="text-lg font-semibold">Emotion Timeline</h3>
+                  <span className="text-xs uppercase tracking-[0.2em] text-black/60">Line Chart</span>
                 </div>
                 {emotionLine.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-6">No emotion timeline yet.</p>
+                  <p className="text-sm text-black/60 mt-6">No emotion timeline yet.</p>
                 ) : (
                   <ChartContainer
                     config={{
@@ -508,62 +525,48 @@ export default function Dashboard() {
                   </ChartContainer>
                 )}
               </div>
-              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">Emotion Distribution</h3>
-                  <span className="text-xs text-muted-foreground">Pie Chart</span>
+              <div className="xl:col-span-2 xl:flex xl:justify-center">
+                <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)] w-full xl:max-w-xl">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Face Analysis Score</h3>
+                    <span className="text-xs uppercase tracking-[0.2em] text-black/60">Radial Bar</span>
+                  </div>
+                  {emotionRadial.length === 0 ? (
+                    <p className="text-sm text-black/60 mt-6">No face analysis data yet.</p>
+                  ) : (
+                    <ChartContainer config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }} className="h-64 mt-4">
+                      <RadialBarChart innerRadius={40} outerRadius={120} data={emotionRadial} startAngle={90} endAngle={-270}>
+                        <PolarGrid radialLines={false} stroke="hsl(var(--border))" />
+                        <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
+                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                        <ChartLegend content={<ChartLegendContent />} />
+                      </RadialBarChart>
+                    </ChartContainer>
+                  )}
                 </div>
-                {emotionPie.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-6">No emotion distribution yet.</p>
-                ) : (
-                  <ChartContainer config={{ value: { label: "Count", color: "hsl(210 85% 55%)" } }} className="h-64 mt-4">
-                    <PieChart>
-                      <Pie data={emotionPie} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} />
-                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                    </PieChart>
-                  </ChartContainer>
-                )}
-              </div>
-              <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">Face Analysis Score</h3>
-                  <span className="text-xs text-muted-foreground">Radial Bar</span>
-                </div>
-                {emotionRadial.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-6">No face analysis data yet.</p>
-                ) : (
-                  <ChartContainer config={{ value: { label: "Value", color: "hsl(210 85% 55%)" } }} className="h-64 mt-4">
-                    <RadialBarChart innerRadius={40} outerRadius={120} data={emotionRadial} startAngle={90} endAngle={-270}>
-                      <PolarGrid radialLines={false} stroke="hsl(var(--border))" />
-                      <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
-                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                      <ChartLegend content={<ChartLegendContent />} />
-                    </RadialBarChart>
-                  </ChartContainer>
-                )}
               </div>
             </div>
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm mt-6">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)] mt-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Emotion Report</h3>
-                <span className="text-xs text-muted-foreground">OpenRouter</span>
+                <h3 className="text-lg font-semibold">Emotion Report</h3>
+                <span className="text-xs uppercase tracking-[0.2em] text-black/60">OpenRouter</span>
               </div>
               {latestReport?.emotionReport?.length ? (
-                <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+                <ul className="text-sm text-black/60 mt-3 space-y-2">
                   {latestReport.emotionReport.map((item, index) => (
                     <li key={index}>• {item}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-muted-foreground mt-4">Emotion feedback appears after camera sessions.</p>
+                <p className="text-sm text-black/60 mt-4">Emotion feedback appears after camera sessions.</p>
               )}
             </div>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-3 mt-8">
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground">Behavioral Interview Prep</h3>
-              <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
+              <h3 className="text-lg font-semibold">Behavioral Interview Prep</h3>
+              <ul className="text-sm text-black/60 mt-3 space-y-2">
                 {(latestReport?.weaknesses.length ? latestReport.weaknesses : ["Complete interviews to unlock insights."])
                   .slice(0, 3)
                   .map((item, index) => (
@@ -571,9 +574,9 @@ export default function Dashboard() {
                   ))}
               </ul>
             </div>
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground">Technical Interview Prep</h3>
-              <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
+              <h3 className="text-lg font-semibold">Technical Interview Prep</h3>
+              <ul className="text-sm text-black/60 mt-3 space-y-2">
                 {(latestReport?.strengths.length ? latestReport.strengths : ["Complete interviews to unlock insights."])
                   .slice(0, 3)
                   .map((item, index) => (
@@ -581,9 +584,9 @@ export default function Dashboard() {
                   ))}
               </ul>
             </div>
-            <div className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground">AI Suggestions</h3>
-              <ul className="text-sm text-muted-foreground mt-3 space-y-2">
+            <div className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
+              <h3 className="text-lg font-semibold">AI Suggestions</h3>
+              <ul className="text-sm text-black/60 mt-3 space-y-2">
                 {(summary?.suggestions.length ? summary.suggestions : ["Complete interviews to unlock insights."])
                   .slice(0, 3)
                   .map((item, index) => (
@@ -593,17 +596,17 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className="rounded-2xl border-2 border-border bg-card p-5 mt-8 shadow-sm">
+          <section className="border-2 border-black bg-white p-5 mt-8 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Recent Interviews</h2>
-              <span className="text-xs text-muted-foreground">Click a row for details</span>
+              <h2 className="text-lg font-semibold">Recent Interviews</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-black/60">Click a row for details</span>
             </div>
             {reports.length === 0 ? (
-              <p className="text-sm text-muted-foreground mt-4">No interviews recorded yet.</p>
+              <p className="text-sm text-black/60 mt-4">No interviews recorded yet.</p>
             ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <thead className="text-left text-xs uppercase tracking-wide text-black/60">
                     <tr>
                       <th className="py-2">Date</th>
                       <th className="py-2">Interview Type</th>
@@ -612,9 +615,9 @@ export default function Dashboard() {
                       <th className="py-2">Feedback</th>
                     </tr>
                   </thead>
-                  <tbody className="text-foreground">
+                  <tbody>
                     {reports.slice(0, 6).map((report) => (
-                      <tr key={report.id} className="border-t border-border/60">
+                      <tr key={report.id} className="border-t border-black/15">
                         <td className="py-3 pr-4">{formatDate(report.createdAt ?? null)}</td>
                         <td className="py-3 pr-4">{inferInterviewType(report.topics || "")}</td>
                         <td className="py-3 pr-4">{report.overall}%</td>
@@ -634,13 +637,13 @@ export default function Dashboard() {
               { title: "Communication Trend", key: "communication", color: "hsl(140 70% 45%)" },
               { title: "Technical Improvement", key: "technical", color: "hsl(32 85% 55%)" },
             ].map((trend) => (
-              <div key={trend.key} className="rounded-2xl border-2 border-border bg-card p-5 shadow-sm">
+              <div key={trend.key} className="border-2 border-black bg-white p-5 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">{trend.title}</h3>
-                  <span className="text-xs text-muted-foreground">Trend</span>
+                  <h3 className="text-lg font-semibold">{trend.title}</h3>
+                  <span className="text-xs uppercase tracking-[0.2em] text-black/60">Trend</span>
                 </div>
                 {lineData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-4">No trend data yet.</p>
+                  <p className="text-sm text-black/60 mt-4">No trend data yet.</p>
                 ) : (
                   <ChartContainer
                     config={{ [trend.key]: { label: trend.title, color: trend.color } }}

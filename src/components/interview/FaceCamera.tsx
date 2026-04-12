@@ -7,9 +7,22 @@ const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 type FaceCameraProps = {
   active: boolean;
   onSample?: (sample: EmotionSample) => void;
+  onDisplaySample?: (sample: EmotionSample) => void;
+  containerClassName?: string;
+  frameClassName?: string;
+  showMetrics?: boolean;
+  showLabelBadge?: boolean;
 };
 
-export function FaceCamera({ active, onSample }: FaceCameraProps) {
+export function FaceCamera({
+  active,
+  onSample,
+  onDisplaySample,
+  containerClassName,
+  frameClassName,
+  showMetrics = true,
+  showLabelBadge = true,
+}: FaceCameraProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState("");
   const [lastSample, setLastSample] = useState<EmotionSample | null>(null);
@@ -17,6 +30,7 @@ export function FaceCamera({ active, onSample }: FaceCameraProps) {
   const [targetSample, setTargetSample] = useState<EmotionSample | null>(null);
   const [displaySample, setDisplaySample] = useState<EmotionSample | null>(null);
   const lastTargetAtRef = useRef(0);
+  const lastNotifyAtRef = useRef(0);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -73,10 +87,9 @@ export function FaceCamera({ active, onSample }: FaceCameraProps) {
     const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
     const tick = () => {
       if (cancelled || !targetSample) return;
+      const t = 0.06;
       setDisplaySample((prev) => {
-        if (!prev) return targetSample;
-        const t = 0.06;
-        return {
+        const nextSample = prev ? {
           ...prev,
           label: targetSample.label,
           confidence: lerp(prev.confidence, targetSample.confidence, t),
@@ -86,7 +99,15 @@ export function FaceCamera({ active, onSample }: FaceCameraProps) {
           eyeContact: lerp(prev.eyeContact, targetSample.eyeContact, t),
           attention: lerp(prev.attention, targetSample.attention, t),
           nervousness: lerp(prev.nervousness, targetSample.nervousness, t),
-        };
+        } : targetSample;
+        if (onDisplaySample) {
+          const now = Date.now();
+          if (now - lastNotifyAtRef.current > 250) {
+            lastNotifyAtRef.current = now;
+            onDisplaySample(nextSample);
+          }
+        }
+        return nextSample;
       });
       requestAnimationFrame(tick);
     };
@@ -99,41 +120,19 @@ export function FaceCamera({ active, onSample }: FaceCameraProps) {
 
   if (!active) return null;
 
-  const confidence = clamp(displaySample?.confidence ?? lastSample?.confidence ?? 0);
-  const stress = clamp(displaySample?.stress ?? lastSample?.stress ?? 0);
-  const engagement = clamp(displaySample?.engagement ?? lastSample?.engagement ?? 0);
+  const wrapperClassName = containerClassName || "fixed bottom-0 right-0 z-[999] flex flex-col items-end gap-2";
+  const frameClass = frameClassName || "w-[220px] h-[160px] rounded-xl border border-white/20 bg-black/60 shadow-xl overflow-hidden relative";
 
   return (
-    <div className="fixed bottom-5 right-5 z-[999] flex flex-col items-end gap-2">
-      <div className="rounded-lg border border-white/20 bg-white/15 px-2.5 py-1 text-[11px] text-white shadow-lg backdrop-blur-md">
-        {error ? "Camera off" : displaySample?.label || lastSample?.label || "Analyzing"}
-      </div>
-      <div className="w-[220px] h-[160px] rounded-xl border border-white/20 bg-black/60 shadow-xl overflow-hidden relative">
+    <div className={wrapperClassName}>
+      {showLabelBadge && (
+        <div className="rounded-lg border border-white/20 bg-white/15 px-2.5 py-1 text-[11px] text-white shadow-lg backdrop-blur-md">
+          {error ? "Camera off" : displaySample?.label || lastSample?.label || "Analyzing"}
+        </div>
+      )}
+      <div className={frameClass}>
         <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-        <div className="absolute bottom-2 left-2 right-2 space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-white">
-            <span>Confidence</span>
-            <span>{confidence}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/20">
-            <div className="h-1.5 rounded-full bg-emerald-400" style={{ width: `${confidence}%` }} />
-          </div>
-          <div className="flex items-center justify-between text-[10px] text-white">
-            <span>Stress</span>
-            <span>{stress}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/20">
-            <div className="h-1.5 rounded-full bg-rose-400" style={{ width: `${stress}%` }} />
-          </div>
-          <div className="flex items-center justify-between text-[10px] text-white">
-            <span>Engagement</span>
-            <span>{engagement}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/20">
-            <div className="h-1.5 rounded-full bg-sky-400" style={{ width: `${engagement}%` }} />
-          </div>
-        </div>
       </div>
       {error && (
         <div className={cn("mt-2 rounded-lg border border-border bg-card px-2 py-1 text-xs text-muted-foreground")}>{error}</div>

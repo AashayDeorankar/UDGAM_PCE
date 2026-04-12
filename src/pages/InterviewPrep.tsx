@@ -280,7 +280,58 @@ export default function InterviewPrep() {
             </Popover>
           </motion.div>
 
-          <div className="max-w-4xl mx-auto mb-10 border-2 border-foreground bg-card shadow-[6px_6px_0_0_hsl(var(--foreground))] p-4 md:p-6 space-y-5">
+          {company ? (
+            <motion.div
+              className="grid md:grid-cols-3 gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {QUESTION_TYPES.map((type, index) => (
+                <motion.div
+                  key={type.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index, type: "spring", stiffness: 200, damping: 20 }}
+                >
+                  <Link to={`/interview-prep/${company}/${type.slug}`} className="group block h-full">
+                    <div
+                      className="paper-card h-full p-6 border-2 border-border hover:border-primary/50 hover:shadow-lg hover:shadow-foreground/10 transition-all duration-300 flex flex-col"
+                      style={{ transform: `rotate(${index % 2 === 0 ? -0.5 : 0.5}deg)` }}
+                    >
+                    <div className="p-3 w-fit rounded-lg bg-primary/10 border border-primary/20 mb-4">
+                      <type.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h2 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">
+                      {type.title}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-4 flex-grow">
+                      {type.description}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                      Open
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </div>
+                </Link>
+                  </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-muted/30"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-60" />
+              <p className="text-muted-foreground">
+                Select a company above to view HR, DSA & SQL questions.
+              </p>
+            </motion.div>
+          )}
+
+          <div className="max-w-4xl mx-auto mt-10 border-2 border-foreground bg-card shadow-[6px_6px_0_0_hsl(var(--foreground))] p-4 md:p-6 space-y-5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div className="space-y-2">
                 <span className="sticker-outline text-[10px]">ASSESSMENT MODE</span>
@@ -458,57 +509,6 @@ export default function InterviewPrep() {
               </div>
             )}
           </div>
-
-          {company ? (
-            <motion.div
-              className="grid md:grid-cols-3 gap-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              {QUESTION_TYPES.map((type, index) => (
-                <motion.div
-                  key={type.id}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index, type: "spring", stiffness: 200, damping: 20 }}
-                >
-                  <Link to={`/interview-prep/${company}/${type.slug}`} className="group block h-full">
-                    <div
-                      className="paper-card h-full p-6 border-2 border-border hover:border-primary/50 hover:shadow-lg hover:shadow-foreground/10 transition-all duration-300 flex flex-col"
-                      style={{ transform: `rotate(${index % 2 === 0 ? -0.5 : 0.5}deg)` }}
-                    >
-                    <div className="p-3 w-fit rounded-lg bg-primary/10 border border-primary/20 mb-4">
-                      <type.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <h2 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">
-                      {type.title}
-                    </h2>
-                    <p className="text-sm text-muted-foreground mb-4 flex-grow">
-                      {type.description}
-                    </p>
-                    <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                      Open
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </Link>
-                  </motion.div>
-              ))}
-            </motion.div>
-          ) : (
-            <motion.div
-              className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-muted/30"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-60" />
-              <p className="text-muted-foreground">
-                Select a company above to view HR, DSA & SQL questions.
-              </p>
-            </motion.div>
-          )}
         </div>
       </main>
 

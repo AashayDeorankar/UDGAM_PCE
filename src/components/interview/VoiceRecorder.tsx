@@ -273,7 +273,7 @@ export function VoiceRecorder({ onStateChange, active = true }: VoiceRecorderPro
 
   return (
     <div className="rounded-xl border-2 border-border bg-card p-3 space-y-3 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -288,16 +288,16 @@ export function VoiceRecorder({ onStateChange, active = true }: VoiceRecorderPro
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" className="gap-2" onClick={startListening} disabled={speechState.isListening || !active}>
-            <Mic className="h-4 w-4" />
-            Start speaking
-          </Button>
-          <Button size="sm" variant="outline" className="gap-2" onClick={stopListening} disabled={!speechState.isListening || !active}>
-            <MicOff className="h-4 w-4" />
-            Stop speaking
-          </Button>
-        </div>
+      </div>
+      <div className="flex justify-center gap-2">
+        <Button size="sm" className="gap-2" onClick={startListening} disabled={speechState.isListening || !active}>
+          <Mic className="h-4 w-4" />
+          Start speaking
+        </Button>
+        <Button size="sm" variant="outline" className="gap-2" onClick={stopListening} disabled={!speechState.isListening || !active}>
+          <MicOff className="h-4 w-4" />
+          Stop speaking
+        </Button>
       </div>
       {speechState.error && <p className="text-xs text-destructive">{speechState.error}</p>}
     </div>
