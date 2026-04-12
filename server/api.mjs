@@ -53,6 +53,7 @@ const { handleFeedback } = await import("./feedback.mjs");
 const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
 const { setupSocketServer } = await import("./socket.mjs");
 const { getAdminAuth, extractBearerToken } = await import("./firebase-admin.mjs");
+const { handlePersonalAnalysis } = await import("./personal-analysis.mjs");
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -329,6 +330,20 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error("[feedback]", err);
       res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err?.message || err) }));
+    }
+    return;
+  }
+
+  // POST /api/personal-analysis – resume + GitHub + LeetCode
+  if (pathname === "/api/personal-analysis" && (req.method || "").toUpperCase() === "POST") {
+    try {
+      const summary = await handlePersonalAnalysis(req);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(summary));
+    } catch (err) {
+      console.error("[personal-analysis]", err);
+      res.writeHead(400, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: String(err?.message || err) }));
     }
     return;

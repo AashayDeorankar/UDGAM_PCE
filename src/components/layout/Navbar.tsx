@@ -261,6 +261,16 @@ export function Navbar() {
                       variant="outline"
                       onClick={() => {
                         setIsOpen(false);
+                        navigate("/personal-analysis");
+                      }}
+                    >
+                      Personal analysis
+                    </Button>
+                    <Button
+                      className="w-full rounded-full"
+                      variant="outline"
+                      onClick={() => {
+                        setIsOpen(false);
                         navigate("/requests");
                       }}
                     >
@@ -360,6 +370,16 @@ export function Navbar() {
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
               >
                 Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate("/personal-analysis");
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50"
+              >
+                Personal analysis
               </button>
               <button
                 type="button"
