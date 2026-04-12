@@ -12,6 +12,7 @@ import {
   getDoc,
   getDocs,
   query,
+  limit,
   setDoc,
   where,
   type QueryDocumentSnapshot,
@@ -22,8 +23,25 @@ import { auth, db } from "./firebase";
 import type { PlatformUser, StudentMetrics, StudentRow, TpoProfile } from "./types";
 
 type ReportDoc = {
+  id?: string;
   userId?: string;
   overall?: number;
+  confidence?: number;
+  communication?: number;
+  technical?: number;
+  fluency?: number;
+  summary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  suggestions?: string[];
+  createdAt?: { toDate?: () => Date };
+};
+
+type AssessmentDoc = {
+  id?: string;
+  userId?: string;
+  label?: string;
+  score?: number;
   createdAt?: { toDate?: () => Date };
 };
 
@@ -130,6 +148,8 @@ function statusFromProgress(progress: number): string {
   return "Needs Attention";
 }
 
+const MAIN_APP_BASE = import.meta.env.VITE_MAIN_APP_URL || "http://localhost:5173";
+
 export default function App() {
   const [booting, setBooting] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
@@ -138,6 +158,9 @@ export default function App() {
   const [alumni, setAlumni] = useState<PlatformUser[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const [selectedAlumni, setSelectedAlumni] = useState<PlatformUser | null>(null);
+  const [selectedStudentReports, setSelectedStudentReports] = useState<ReportDoc[]>([]);
+  const [selectedAssessmentResults, setSelectedAssessmentResults] = useState<AssessmentDoc[]>([]);
+  const [studentDashboardLoading, setStudentDashboardLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [search, setSearch] = useState("");
@@ -332,6 +355,41 @@ export default function App() {
     await signOut(auth);
   };
 
+  const toMillis = (value?: { toDate?: () => Date }) => (value?.toDate ? value.toDate().getTime() : 0);
+
+  const loadStudentDashboardData = async (userId: string) => {
+    setStudentDashboardLoading(true);
+    try {
+      const reportsRef = collection(db, "mockInterviewReports");
+      const resultsRef = collection(db, "assessmentResults");
+
+      const reportsSnap = await getDocs(query(reportsRef, where("userId", "==", userId), limit(25)));
+      const reports = reportsSnap.docs.map((docSnap) => {
+        const data = docSnap.data() as ReportDoc;
+        return { ...data, id: docSnap.id };
+      });
+      reports.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+      setSelectedStudentReports(reports);
+
+      const resultsSnap = await getDocs(query(resultsRef, where("userId", "==", userId), limit(25)));
+      const results = resultsSnap.docs.map((docSnap) => {
+        const data = docSnap.data() as AssessmentDoc;
+        return { ...data, id: docSnap.id };
+      });
+      results.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+      setSelectedAssessmentResults(results);
+    } finally {
+      setStudentDashboardLoading(false);
+    }
+  };
+
+  const openStudentDashboard = (student: StudentRow) => {
+    setSelectedStudent(student);
+    setSelectedStudentReports([]);
+    setSelectedAssessmentResults([]);
+    void loadStudentDashboardData(student.uid);
+  };
+
   if (booting) {
     return (
       <div className="screen center">
@@ -507,7 +565,7 @@ export default function App() {
                         <button
                           type="button"
                           className="student-link"
-                          onClick={() => setSelectedStudent(student)}
+                          onClick={() => openStudentDashboard(student)}
                         >
                           {student.name}
                         </button>
@@ -640,43 +698,98 @@ export default function App() {
               </button>
             </div>
 
-            <div className="modal-grid">
-              <div>
-                <p className="label">Branch / Year</p>
-                <p>{selectedStudent.branch || "-"} {selectedStudent.year ? `• ${selectedStudent.year}` : ""}</p>
-              </div>
-              <div>
-                <p className="label">Domain</p>
-                <p>{selectedStudent.domain || "-"}</p>
-              </div>
-              <div>
-                <p className="label">Target Role</p>
-                <p>{selectedStudent.target || "-"}</p>
-              </div>
-              <div>
-                <p className="label">Last Activity</p>
-                <p>{selectedStudent.lastActivity}</p>
-              </div>
-            </div>
+            {studentDashboardLoading ? (
+              <div className="loader-card">Loading student dashboard...</div>
+            ) : (
+              <>
+                <div className="modal-grid">
+                  <div>
+                    <p className="label">Branch / Year</p>
+                    <p>{selectedStudent.branch || "-"} {selectedStudent.year ? `• ${selectedStudent.year}` : ""}</p>
+                  </div>
+                  <div>
+                    <p className="label">Domain</p>
+                    <p>{selectedStudent.domain || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="label">Target Role</p>
+                    <p>{selectedStudent.target || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="label">Last Activity</p>
+                    <p>{selectedStudent.lastActivity}</p>
+                  </div>
+                </div>
 
-            <div className="modal-kpis">
-              <article>
-                <p>Progress</p>
-                <strong>{selectedStudent.progress}%</strong>
-              </article>
-              <article>
-                <p>Assessment</p>
-                <strong>{selectedStudent.assessmentScore}/100</strong>
-              </article>
-              <article>
-                <p>Attempts</p>
-                <strong>{selectedStudent.attempts}</strong>
-              </article>
-              <article>
-                <p>Status</p>
-                <strong>{statusFromProgress(selectedStudent.progress)}</strong>
-              </article>
-            </div>
+                <div className="modal-kpis">
+                  <article>
+                    <p>Progress</p>
+                    <strong>{selectedStudent.progress}%</strong>
+                  </article>
+                  <article>
+                    <p>Assessment</p>
+                    <strong>{selectedStudent.assessmentScore}/100</strong>
+                  </article>
+                  <article>
+                    <p>Attempts</p>
+                    <strong>{selectedStudent.attempts}</strong>
+                  </article>
+                  <article>
+                    <p>Status</p>
+                    <strong>{statusFromProgress(selectedStudent.progress)}</strong>
+                  </article>
+                </div>
+
+                <div className="modal-grid">
+                  <div>
+                    <p className="label">Interview Reports</p>
+                    <p>{selectedStudentReports.length} total</p>
+                  </div>
+                  <div>
+                    <p className="label">Assessments</p>
+                    <p>{selectedAssessmentResults.length} total</p>
+                  </div>
+                </div>
+
+                <div className="modal-grid">
+                  <div>
+                    <p className="label">Latest Interview Summary</p>
+                    <p>{selectedStudentReports[0]?.summary || "No interview summary yet."}</p>
+                  </div>
+                  <div>
+                    <p className="label">Latest Suggestions</p>
+                    <p>{selectedStudentReports[0]?.suggestions?.join(", ") || "No suggestions yet."}</p>
+                  </div>
+                </div>
+
+                <div className="modal-grid">
+                  <div>
+                    <p className="label">Recent Interviews</p>
+                    <ul>
+                      {selectedStudentReports.slice(0, 5).map((report) => (
+                        <li key={report.id || report.summary}>
+                          {(report.createdAt?.toDate ? report.createdAt.toDate().toLocaleDateString("en-IN") : "--")}
+                          {" · "}
+                          {report.overall ?? 0}/100
+                        </li>
+                      ))}
+                      {selectedStudentReports.length === 0 && <li>--</li>}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="label">Recent Assessments</p>
+                    <ul>
+                      {selectedAssessmentResults.slice(0, 5).map((result) => (
+                        <li key={result.id || result.label}>
+                          {result.label || "Assessment"} · {result.score ?? 0}/100
+                        </li>
+                      ))}
+                      {selectedAssessmentResults.length === 0 && <li>--</li>}
+                    </ul>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
