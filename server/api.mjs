@@ -53,7 +53,7 @@ const { handleFeedback } = await import("./feedback.mjs");
 const { getUserSummary, getAdminSummary } = await import("./analytics.mjs");
 const { setupSocketServer } = await import("./socket.mjs");
 const { getAdminAuth, extractBearerToken } = await import("./firebase-admin.mjs");
-const { handlePersonalAnalysis } = await import("./personal-analysis.mjs");
+const { handleWelcomeEmail } = await import("./welcome-email.mjs");
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -208,6 +208,24 @@ const server = http.createServer(async (req, res) => {
       res.end(out.body);
     } catch (err) {
       console.error("[matchmaking]", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err?.message || err) }));
+    }
+    return;
+  }
+
+  // POST /api/welcome-email – send welcome email to new user
+  if (pathname === "/api/welcome-email" && (req.method || "").toUpperCase() === "POST") {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString("utf8") || "{}";
+    try {
+      const out = await handleWelcomeEmail(body, {
+        authorization: req.headers.authorization || "",
+      });
+      res.writeHead(out.statusCode, { "Content-Type": "application/json" });
+      res.end(out.body);
+    } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: String(err?.message || err) }));
     }

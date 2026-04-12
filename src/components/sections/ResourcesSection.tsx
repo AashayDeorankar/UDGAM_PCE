@@ -155,28 +155,49 @@ export function ResourcesSection({ basePath = "", showCta = true }: { basePath?:
             viewport={{ once: true }}
             className="mt-12 text-center"
           >
-            {user ? (
-              <Button size="lg" variant="default" className="btn-punch hover:scale-[1.02] active:scale-[0.98]" asChild>
-                <a href={branchHref}>
-                  <Sparkles className="h-4 w-4" />
-                  Explore All Resources
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                variant="default"
-                className="btn-punch hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => setShowLoginModal(true)}
-              >
-                <Sparkles className="h-4 w-4" />
-                Explore All Resources
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            )}
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              {user ? (
+                <>
+                  <Button size="lg" variant="default" className="btn-punch hover:scale-[1.02] active:scale-[0.98]" asChild>
+                    <a href={branchHref}>
+                      <Sparkles className="h-4 w-4" />
+                      Explore All Resources
+                      <ArrowRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button size="lg" variant="outline" className="btn-punch" asChild>
+                    <a href="/upload">
+                      Upload Resource
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    variant="default"
+                    className="btn-punch hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={() => setShowLoginModal(true)}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Explore All Resources
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="btn-punch"
+                    onClick={() => setShowLoginModal(true)}
+                  >
+                    Upload Resource
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-4">
-              Login to browse and download.
+              Login to browse, download, and upload materials.
             </p>
           </motion.div>
         )}

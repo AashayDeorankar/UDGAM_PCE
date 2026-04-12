@@ -30,12 +30,13 @@ const alumniLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, signOut, loading, isAdmin, role } = useAuth();
+  const { user, signOut, loading, role } = useAuth();
   const navigate = useNavigate();
   const db = getFirestoreDb();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [membershipTier, setMembershipTier] = useState<MembershipTier>("free");
+  const [userName, setUserName] = useState("");
   const navLinks = role === "alumni" ? alumniLinks : studentLinks;
 
   useEffect(() => {
@@ -48,13 +49,16 @@ export function Navbar() {
       (snap) => {
         if (!snap.exists()) {
           setMembershipTier("free");
+          setUserName("");
           return;
         }
-        const data = snap.data() as { membershipTier?: string };
+        const data = snap.data() as { membershipTier?: string; name?: string };
         setMembershipTier(normalizeMembershipTier(data.membershipTier));
+        setUserName((data.name || user.displayName || "").trim());
       },
       () => {
         setMembershipTier("free");
+        setUserName("");
       },
     );
     return () => unsub();
@@ -121,12 +125,12 @@ export function Navbar() {
           scrolled
             ? "bg-background/95 backdrop-blur-md shadow-lg shadow-foreground/5"
             : "bg-background/90 backdrop-blur-sm shadow-md shadow-foreground/5"
-        } border border-border/50 max-w-6xl w-full`}
+        } border border-border/50 w-fit max-w-[calc(100vw-2rem)]`}
       >
         {/* Logo - Left */}
         <Link to="/" className="flex items-center gap-1.5 pl-1.5 flex-shrink-0 min-w-0">
-          <img src={logoImage} alt="TechPrep" className="h-8 w-auto" />
-          <span className="text-[1rem] font-bold hidden sm:inline leading-8">
+          <img src={logoImage} alt="TechPrep" className="h-12 md:h-10 w-auto" />
+          <span className="text-[1.15rem] md:text-[1.15rem] font-bold hidden sm:inline leading-8">
             Tech<span className="text-primary">Prep</span>
           </span>
           <span className="hidden xl:inline text-xs handwritten text-muted-foreground/80 ml-0.5">for students</span>
@@ -134,7 +138,7 @@ export function Navbar() {
 
         {/* Desktop Navigation - Center */}
         <div className="hidden lg:flex items-center gap-1 px-2 min-w-0 flex-1 justify-center">
-          {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
+          {navLinks.map((link) => {
             const isHashLink = link.href.startsWith("/#");
             const isPageLink = link.href.startsWith("/") && !isHashLink;
             const linkClass = "px-2 py-1 text-[13px] xl:text-sm text-muted-foreground hover:text-primary link-underline transition-all duration-200 whitespace-nowrap";
@@ -203,7 +207,7 @@ export function Navbar() {
                 >
                   Upgrade
                 </button>
-                {[...navLinks, ...(isAdmin ? [{ name: "Upload", href: "/upload" }] : [])].map((link) => {
+                {navLinks.map((link) => {
                   const isHashLink = link.href.startsWith("/#");
                   const isPageLink = link.href.startsWith("/") && !isHashLink;
                   const linkClass = "px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-colors whitespace-nowrap";
@@ -241,7 +245,7 @@ export function Navbar() {
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground flex items-center gap-2 px-4">
                       <User className="h-4 w-4" />
-                      {user.email}
+                      {userName || "User"}
                       {role && (
                         <span className="ml-1 text-[10px] uppercase tracking-wide text-primary/70">{role}</span>
                       )}
@@ -347,8 +351,8 @@ export function Navbar() {
             className="flex items-center gap-1.5 px-2 h-7 rounded-full hover:bg-muted/60 transition-colors"
           >
             <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground max-w-[90px] truncate" title={user.email ?? undefined}>
-              {user.email?.split("@")[0]}
+            <span className="text-[11px] text-muted-foreground max-w-[90px] truncate" title={userName || "User"}>
+              {userName || "User"}
             </span>
             {role && (
               <span className="text-[10px] uppercase tracking-wide text-primary/70">{role}</span>

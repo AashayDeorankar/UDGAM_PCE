@@ -62,7 +62,8 @@ export function UpgradePlanModal({
     id: MembershipTier;
     badge: string;
     title: string;
-    amount: string;
+    currency: string;
+    amountValue: string;
     subtitle: string;
     features: string[];
     ctaHelper: string;
@@ -72,7 +73,8 @@ export function UpgradePlanModal({
       id: "free",
       badge: "Starter",
       title: "Starter",
-      amount: "$0",
+      currency: "Rs",
+      amountValue: "0",
       subtitle: "/user per month",
       features: [
         "Up to 3 alumni sessions",
@@ -85,7 +87,8 @@ export function UpgradePlanModal({
       id: "gold",
       badge: "Premium",
       title: "Premium",
-      amount: "$29",
+      currency: "Rs",
+      amountValue: "199",
       subtitle: "/user per month",
       features: [
         "Unlimited alumni sessions",
@@ -98,7 +101,8 @@ export function UpgradePlanModal({
       id: "platinum",
       badge: "Enterprise",
       title: "Enterprise",
-      amount: "$49",
+      currency: "Rs",
+      amountValue: "299",
       subtitle: "/user per month",
       features: [
         "Everything in Gold",
@@ -194,8 +198,8 @@ export function UpgradePlanModal({
                     </div>
                     <p className="text-2xl font-semibold mt-2">{plan.title}</p>
                     <div className="mt-2 flex items-end gap-1">
-                      <span className="text-xl font-semibold">$</span>
-                      <span className="text-5xl font-bold leading-none">{plan.amount.replace("$", "")}</span>
+                      <span className="text-xl font-semibold">{plan.currency}</span>
+                      <span className="text-5xl font-bold leading-none">{plan.amountValue}</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{plan.subtitle}</p>
                   </div>

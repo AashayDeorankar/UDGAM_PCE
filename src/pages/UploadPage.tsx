@@ -41,7 +41,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 export default function UploadPage() {
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -58,11 +58,7 @@ export default function UploadPage() {
       navigate("/auth", { replace: true });
       return;
     }
-    if (!isAdmin) {
-      navigate("/", { replace: true });
-      return;
-    }
-  }, [user, authLoading, isAdmin, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +115,7 @@ export default function UploadPage() {
     }
   };
 
-  if (authLoading || !user || !isAdmin) {
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
