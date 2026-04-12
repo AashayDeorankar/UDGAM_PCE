@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import {
   FileText,
@@ -291,6 +291,7 @@ export default function BranchMaterials() {
   const { user } = useAuth();
   const db = getFirestoreDb();
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   const [data, setData] = useState<BranchMaterialsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -681,6 +682,13 @@ export default function BranchMaterials() {
                 onClick={openRequest}
               >
                 Request {activeTabLabel}
+              </Button>
+              <Button
+                variant="default"
+                className="btn-punch"
+                onClick={() => navigate("/upload")}
+              >
+                Upload Resource
               </Button>
             </div>
             <div className="relative max-w-md mb-6">
