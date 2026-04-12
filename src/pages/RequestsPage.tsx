@@ -8,6 +8,7 @@ import { getFirestoreDb } from "@/integrations/firebase/config";
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -21,6 +22,8 @@ type ConnectionItem = {
   recipientId?: string;
   requesterEmail?: string;
   recipientEmail?: string;
+  requesterName?: string;
+  recipientName?: string;
   status?: string;
 };
 
@@ -29,6 +32,7 @@ export default function RequestsPage() {
   const db = getFirestoreDb();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<ConnectionItem[]>([]);
+  const [nameById, setNameById] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +46,38 @@ export default function RequestsPage() {
     });
     return () => unsub();
   }, [db, user]);
+
+  useEffect(() => {
+    const loadNames = async () => {
+      const ids = new Set<string>();
+      requests.forEach((req) => {
+        if (req.requesterId) ids.add(req.requesterId);
+        if (req.recipientId) ids.add(req.recipientId);
+      });
+      if (ids.size === 0) {
+        setNameById({});
+        return;
+      }
+      const entries = await Promise.all(
+        Array.from(ids).map(async (id) => {
+          try {
+            const snap = await getDoc(doc(db, "users", id));
+            if (!snap.exists()) return [id, ""] as const;
+            const data = snap.data() as { name?: string };
+            return [id, (data.name || "").trim()] as const;
+          } catch {
+            return [id, ""] as const;
+          }
+        }),
+      );
+      const map: Record<string, string> = {};
+      entries.forEach(([id, name]) => {
+        if (name) map[id] = name;
+      });
+      setNameById(map);
+    };
+    void loadNames();
+  }, [db, requests]);
 
   const incomingPending = requests.filter((r) => r.recipientId === user?.uid && r.status === "pending");
   const outgoingPending = requests.filter((r) => r.requesterId === user?.uid && r.status === "pending");
@@ -79,6 +115,12 @@ export default function RequestsPage() {
     navigate(`/inbox?chatId=${encodeURIComponent(chatId)}`);
   };
 
+  const getUserLabel = (id?: string, name?: string, fallbackEmail?: string) => {
+    if (name && name.trim()) return name.trim();
+    if (id && nameById[id]) return nameById[id];
+    return fallbackEmail?.trim() ? "User" : "User";
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -98,7 +140,9 @@ export default function RequestsPage() {
                   {incomingPending.map((req) => (
                     <div key={req.id} className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{req.requesterEmail || "User"}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {getUserLabel(req.requesterId, req.requesterName, req.requesterEmail)}
+                        </p>
                         <p className="text-xs text-muted-foreground">Wants to connect</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -119,7 +163,9 @@ export default function RequestsPage() {
                 <div className="space-y-2">
                   {outgoingPending.map((req) => (
                     <div key={req.id} className="border border-border rounded-lg p-3">
-                      <p className="text-sm font-medium text-foreground">{req.recipientEmail || "User"}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {getUserLabel(req.recipientId, req.recipientName, req.recipientEmail)}
+                      </p>
                       <p className="text-xs text-muted-foreground">Pending</p>
                     </div>
                   ))}
@@ -136,10 +182,13 @@ export default function RequestsPage() {
                   {connected.map((req) => {
                     const partnerId = req.requesterId === user?.uid ? req.recipientId : req.requesterId;
                     const otherEmail = req.requesterId === user?.uid ? req.recipientEmail : req.requesterEmail;
+                    const otherName = req.requesterId === user?.uid
+                      ? getUserLabel(req.recipientId, req.recipientName, req.recipientEmail)
+                      : getUserLabel(req.requesterId, req.requesterName, req.requesterEmail);
                     return (
                       <div key={req.id} className="border border-border rounded-lg p-3 flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-foreground">{otherEmail || "User"}</p>
+                          <p className="text-sm font-medium text-foreground">{otherName}</p>
                           <p className="text-xs text-muted-foreground">Connected</p>
                         </div>
                         <Button

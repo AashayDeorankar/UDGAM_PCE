@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,12 @@ export default function Profile() {
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [membershipTier, setMembershipTier] = useState<MembershipTier>("free");
   const [alumniSessionsUsed, setAlumniSessionsUsed] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const isEditingRef = useRef(false);
+
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
 
   const applyProfileData = (data: {
     name?: string;
@@ -69,49 +75,76 @@ export default function Profile() {
     const unsub = onSnapshot(
       userRef,
       async (snap) => {
-        if (snap.exists()) {
-          applyProfileData(snap.data() as {
-            name?: string;
-            domain?: string;
-            target?: string;
-            collegeName?: string;
-            year?: string;
-            branch?: string;
-            companyName?: string;
-            position?: string;
-            profileImageUrl?: string;
-            membershipTier?: string;
-            alumniSessionsUsed?: number;
-          });
-          return;
+        const data = snap.exists()
+          ? (snap.data() as {
+              name?: string;
+              domain?: string;
+              target?: string;
+              collegeName?: string;
+              year?: string;
+              branch?: string;
+              companyName?: string;
+              position?: string;
+              profileImageUrl?: string;
+              membershipTier?: string;
+              alumniSessionsUsed?: number;
+            })
+          : null;
+
+        if (data && !isEditingRef.current) {
+          applyProfileData(data);
         }
 
-        // Backward-compatible fallback if older accounts only have role-specific docs.
-        if (!role) return;
-        try {
-          const roleSnap = await getDoc(doc(db, role === "alumni" ? "alumni" : "students", user.uid));
-          if (!roleSnap.exists()) return;
+        const hasCoreProfile = Boolean(
+          data?.name || data?.collegeName || data?.domain || data?.target || data?.companyName || data?.position,
+        );
 
-          const roleData = roleSnap.data() as {
-            name?: string;
-            domain?: string;
-            target?: string;
-            collegeName?: string;
-            year?: string;
-            branch?: string;
-            companyName?: string;
-            position?: string;
-            profileImageUrl?: string;
-            membershipTier?: string;
-            alumniSessionsUsed?: number;
+        // Backward-compatible fallback if older accounts only have role-specific docs,
+        // or if the main user doc exists but is missing core profile fields.
+        if (hasCoreProfile) return;
+        try {
+          const roleHint = role || data?.role;
+          const tryRoleDoc = async (collectionName: "students" | "alumni") => {
+            const roleSnap = await getDoc(doc(db, collectionName, user.uid));
+            if (!roleSnap.exists()) return null;
+            return roleSnap.data() as {
+              name?: string;
+              domain?: string;
+              target?: string;
+              collegeName?: string;
+              year?: string;
+              branch?: string;
+              companyName?: string;
+              position?: string;
+              profileImageUrl?: string;
+              membershipTier?: string;
+              alumniSessionsUsed?: number;
+            };
           };
-          applyProfileData(roleData);
+
+          let roleData = roleHint === "alumni"
+            ? await tryRoleDoc("alumni")
+            : roleHint === "student"
+              ? await tryRoleDoc("students")
+              : null;
+
+          if (!roleData) {
+            roleData = await tryRoleDoc("students");
+          }
+          if (!roleData) {
+            roleData = await tryRoleDoc("alumni");
+          }
+          if (!roleData) return;
+
+          if (!isEditingRef.current) {
+            applyProfileData(roleData);
+          }
 
           await setDoc(
             userRef,
             {
               email: user.email || "",
-              role,
+              role: roleHint || role || data?.role || "student",
               ...roleData,
               membershipTier: normalizeMembershipTier(roleData.membershipTier),
               alumniSessionsUsed: typeof roleData.alumniSessionsUsed === "number" ? roleData.alumniSessionsUsed : 0,
@@ -179,25 +212,38 @@ export default function Profile() {
     if (!user) return;
     setLoading(true);
     try {
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
-          name,
-          email: user.email || "",
-          domain,
-          target,
-          collegeName,
-          year,
-          branch,
-          companyName,
-          position,
-          profileImageUrl,
-          membershipTier,
-          alumniSessionsUsed,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      const payload = {
+        name,
+        email: user.email || "",
+        domain,
+        target,
+        collegeName,
+        year,
+        branch,
+        companyName,
+        position,
+        profileImageUrl,
+        membershipTier,
+        alumniSessionsUsed,
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, "users", user.uid), payload, { merge: true });
+
+      if (role) {
+        await setDoc(
+          doc(db, role === "alumni" ? "alumni" : "students", user.uid),
+          {
+            ...payload,
+            role,
+          },
+          { merge: true },
+        );
+      }
+
+      toast({ title: "Profile updated", description: "Your changes have been saved." });
+      setIsEditing(false);
+      isEditingRef.current = false;
     } finally {
       setLoading(false);
     }
@@ -268,7 +314,15 @@ export default function Profile() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Full name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+              <Input
+                value={name}
+                onChange={(e) => {
+                  setIsEditing(true);
+                  isEditingRef.current = true;
+                  setName(e.target.value);
+                }}
+                placeholder="Your name"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Email</label>
@@ -276,27 +330,67 @@ export default function Profile() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Domain</label>
-              <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="Backend, AI/ML, Product" />
+              <Input
+                value={domain}
+                onChange={(e) => {
+                  setIsEditing(true);
+                  isEditingRef.current = true;
+                  setDomain(e.target.value);
+                }}
+                placeholder="Backend, AI/ML, Product"
+              />
             </div>
             {role === "student" && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Target</label>
-                <Input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="SDE-1, Data Analyst" />
+                <Input
+                  value={target}
+                  onChange={(e) => {
+                    setIsEditing(true);
+                    isEditingRef.current = true;
+                    setTarget(e.target.value);
+                  }}
+                  placeholder="SDE-1, Data Analyst"
+                />
               </div>
             )}
             {role === "student" && (
               <>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">College name</label>
-                  <Input value={collegeName} onChange={(e) => setCollegeName(e.target.value)} placeholder="Your college" />
+                  <Input
+                    value={collegeName}
+                    onChange={(e) => {
+                      setIsEditing(true);
+                      isEditingRef.current = true;
+                      setCollegeName(e.target.value);
+                    }}
+                    placeholder="Your college"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Year</label>
-                  <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="3rd year" />
+                  <Input
+                    value={year}
+                    onChange={(e) => {
+                      setIsEditing(true);
+                      isEditingRef.current = true;
+                      setYear(e.target.value);
+                    }}
+                    placeholder="3rd year"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Branch</label>
-                  <Input value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="CSE, ECE" />
+                  <Input
+                    value={branch}
+                    onChange={(e) => {
+                      setIsEditing(true);
+                      isEditingRef.current = true;
+                      setBranch(e.target.value);
+                    }}
+                    placeholder="CSE, ECE"
+                  />
                 </div>
               </>
             )}
@@ -304,15 +398,39 @@ export default function Profile() {
               <>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Company name</label>
-                  <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your company" />
+                  <Input
+                    value={companyName}
+                    onChange={(e) => {
+                      setIsEditing(true);
+                      isEditingRef.current = true;
+                      setCompanyName(e.target.value);
+                    }}
+                    placeholder="Your company"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Position in company</label>
-                  <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="SDE-2, PM" />
+                  <Input
+                    value={position}
+                    onChange={(e) => {
+                      setIsEditing(true);
+                      isEditingRef.current = true;
+                      setPosition(e.target.value);
+                    }}
+                    placeholder="SDE-2, PM"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">College name</label>
-                  <Input value={collegeName} onChange={(e) => setCollegeName(e.target.value)} placeholder="Your college" />
+                  <Input
+                    value={collegeName}
+                    onChange={(e) => {
+                      setIsEditing(true);
+                      isEditingRef.current = true;
+                      setCollegeName(e.target.value);
+                    }}
+                    placeholder="Your college"
+                  />
                 </div>
               </>
             )}

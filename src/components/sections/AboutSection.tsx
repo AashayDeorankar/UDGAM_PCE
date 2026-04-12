@@ -112,13 +112,13 @@ export function AboutSection() {
 
               {/* Social Links */}
               <div className="flex gap-2 mt-6">
-                <a href="https://github.com/Aman6917-ctrl" target="_blank" rel="noopener noreferrer" className="p-3 border-2 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all" aria-label="GitHub">
+                <a href="https://github.com/code-aniruddha" target="_blank" rel="noopener noreferrer" className="p-3 border-2 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all" aria-label="GitHub">
                   <Github className="h-4 w-4" />
                 </a>
-                <a href="https://www.youtube.com/@aman_verma6917" target="_blank" rel="noopener noreferrer" className="p-3 border-2 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all" aria-label="YouTube">
+                <a href="https://www.youtube.com//" target="_blank" rel="noopener noreferrer" className="p-3 border-2 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all" aria-label="YouTube">
                   <Youtube className="h-4 w-4" />
                 </a>
-                <a href="https://www.linkedin.com/in/aman-verma-cse" target="_blank" rel="noopener noreferrer" className="p-3 border-2 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all" aria-label="LinkedIn">
+                <a href="https://www.linkedin.com/in/aniruddha-chaudhari-ac" target="_blank" rel="noopener noreferrer" className="p-3 border-2 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all" aria-label="LinkedIn">
                   <Linkedin className="h-4 w-4" />
                 </a>
               </div>

@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { getFirebaseAuth, getFirestoreDb } from "@/integrations/firebase/config";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getApiBase } from "@/lib/api-base";
 
 /** Comma-separated list of admin emails (env: VITE_ADMIN_EMAILS). First entry is default admin. */
 const DEFAULT_ADMIN_EMAILS = ["amanvverma109@gmail.com"];
@@ -59,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const db = getFirestoreDb();
   const pendingRoleKey = "techprep.pendingRole";
   const storedRoleKey = "techprep.selectedRole";
+  const pendingProfileKey = "techprep.pendingProfile";
 
   const ensureProfile = async (
     firebaseUser: User,
@@ -107,24 +109,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const data = snap.data() as { role?: "student" | "alumni"; membershipTier?: string; alumniSessionsUsed?: number };
+    const data = snap.data() as {
+      role?: "student" | "alumni";
+      membershipTier?: string;
+      alumniSessionsUsed?: number;
+      name?: string;
+      domain?: string;
+      target?: string;
+      collegeName?: string;
+      year?: string;
+      branch?: string;
+      companyName?: string;
+      position?: string;
+    };
     const currentRole = data?.role || "student";
-    const roleToSet = preferredRole || resolvedRole || currentRole;
+    const roleToSet = profile
+      ? (preferredRole || resolvedRole || currentRole)
+      : (data?.role || preferredRole || resolvedRole || currentRole);
     const profilePatch: Record<string, unknown> = {
       role: roleToSet,
       ...(profile || {}),
       updatedAt: serverTimestamp(),
     };
+    if (profile) {
+      profilePatch.email = firebaseUser.email || "";
+    }
 
     if (!data?.membershipTier) profilePatch.membershipTier = "free";
     if (typeof data?.alumniSessionsUsed !== "number") profilePatch.alumniSessionsUsed = 0;
 
-    if (roleToSet !== currentRole || profile || profilePatch.membershipTier || profilePatch.alumniSessionsUsed === 0) {
-      await setDoc(
-        userRef,
-        profilePatch,
-        { merge: true },
-      );
+    const shouldMergeProfile = Boolean(profile) || roleToSet !== currentRole || profilePatch.membershipTier || profilePatch.alumniSessionsUsed === 0;
+    if (shouldMergeProfile) {
+      await setDoc(userRef, profilePatch, { merge: true });
       await setDoc(
         roleToSet === "alumni" ? alumniRef : studentRef,
         {
@@ -137,6 +153,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         { merge: true },
       );
+    }
+    const hasCoreProfile = Boolean(
+      data?.name || data?.collegeName || data?.domain || data?.target || data?.companyName || data?.position,
+    );
+    if (!profile && !hasCoreProfile) {
+      try {
+        const roleDoc = await getDoc(roleToSet === "alumni" ? alumniRef : studentRef);
+        if (roleDoc.exists()) {
+          const roleData = roleDoc.data() as Record<string, unknown>;
+          await setDoc(
+            userRef,
+            {
+              email: firebaseUser.email || "",
+              role: roleToSet,
+              ...roleData,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+      } catch {
+        // ignore backfill errors
+      }
     }
     setRole(roleToSet);
   };
@@ -154,10 +193,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nullTimeoutId = null;
         setUser(firebaseUser);
         let preferredRole: "student" | "alumni" | undefined;
+        let pendingProfile: Record<string, string> | undefined;
         try {
           const raw = window.sessionStorage.getItem(pendingRoleKey);
           if (raw === "student" || raw === "alumni") preferredRole = raw;
           if (preferredRole) window.sessionStorage.removeItem(pendingRoleKey);
+        } catch (_) {
+          // ignore
+        }
+        try {
+          const rawProfile = window.sessionStorage.getItem(pendingProfileKey);
+          if (rawProfile) {
+            const parsed = JSON.parse(rawProfile) as Record<string, string>;
+            if (parsed && typeof parsed === "object") pendingProfile = parsed;
+            window.sessionStorage.removeItem(pendingProfileKey);
+          }
         } catch (_) {
           // ignore
         }
@@ -173,8 +223,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(preferredRole);
         }
         const roleHint = preferredRole || roleRef.current || undefined;
-        ensureProfile(firebaseUser, roleHint).catch(() => setRole(null));
+        ensureProfile(firebaseUser, roleHint, pendingProfile).catch(() => setRole(null));
         setLoading(false);
+        (async () => {
+          try {
+            const token = await firebaseUser.getIdToken();
+            await fetch(`${getApiBase()}/api/welcome-email`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: "{}",
+            });
+          } catch {
+            // ignore welcome email failures
+          }
+        })();
         return;
       }
       // Firebase often fires once with null before restoring persisted session.
@@ -201,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await ensureProfile(cred.user, preferredRole, profile);
+      void ensureProfile(cred.user, preferredRole, profile);
       return { error: null };
     } catch (err) {
       return { error: err as Error };

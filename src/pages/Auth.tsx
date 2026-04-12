@@ -30,6 +30,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getFirestoreDb } from "@/integrations/firebase/config";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -67,9 +68,11 @@ export default function Auth() {
   const { signIn, signUp, signInWithGoogle, user, loading, redirectError, clearRedirectError } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const db = getFirestoreDb();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
   const hasRedirected = useRef(false);
+  const pendingProfileKey = "techprep.pendingProfile";
 
   // Show toast when returning from Google redirect with an error (e.g. user cancelled)
   useEffect(() => {
@@ -226,6 +229,14 @@ export default function Auth() {
     };
   };
 
+  const storePendingProfile = (payload: Record<string, string>) => {
+    try {
+      window.sessionStorage.setItem(pendingProfileKey, JSON.stringify(payload));
+    } catch {
+      // ignore storage failures
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -268,8 +279,15 @@ export default function Auth() {
           requestAnimationFrame(() => scrollToTop());
         }
       } else {
-        const { error } = await signUp(email, password, role, buildProfilePayload());
+        const payload = buildProfilePayload();
+        storePendingProfile(payload);
+        const { error } = await signUp(email, password, role, payload);
         if (error) {
+          try {
+            window.sessionStorage.removeItem(pendingProfileKey);
+          } catch {
+            // ignore
+          }
           const code = (error as { code?: string }).code;
           if (code === "auth/email-already-in-use") {
             toast({
@@ -307,8 +325,16 @@ export default function Auth() {
     setGoogleLoading(true);
     try {
       const profilePayload = isLogin ? undefined : buildProfilePayload();
+      if (!isLogin && profilePayload) {
+        storePendingProfile(profilePayload);
+      }
       const { error } = await signInWithGoogle(role, profilePayload);
       if (error) {
+        try {
+          window.sessionStorage.removeItem(pendingProfileKey);
+        } catch {
+          // ignore
+        }
         toast({
           variant: "destructive",
           title: "Google sign-in failed",

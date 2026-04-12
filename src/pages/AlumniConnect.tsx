@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   doc,
   setDoc,
   serverTimestamp,
@@ -45,6 +46,7 @@ export default function AlumniConnect() {
   const [connections, setConnections] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [collegeFilter, setCollegeFilter] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
 
   useLayoutEffect(() => {
     scrollToTop();
@@ -54,6 +56,11 @@ export default function AlumniConnect() {
     const loadConnectUsers = async () => {
       if (!user) return;
       try {
+        const currentSnap = await getDoc(doc(db, "users", user.uid));
+        if (currentSnap.exists()) {
+          const currentData = currentSnap.data() as { name?: string };
+          setCurrentUserName((currentData.name || user.displayName || "").trim());
+        }
         const usersQ = query(collection(db, "users"), where("role", "in", ["student", "alumni"]));
         const snap = await getDocs(usersQ);
         const list = snap.docs
@@ -98,7 +105,7 @@ export default function AlumniConnect() {
 
   const buildConnectionId = (a: string, b: string) => [a, b].sort().join("_");
 
-  const sendConnectionRequest = async (partnerId: string, partnerEmail: string) => {
+  const sendConnectionRequest = async (partnerId: string, partnerEmail: string, partnerName: string) => {
     if (!user) return;
     const connId = buildConnectionId(user.uid, partnerId);
     await setDoc(
@@ -109,6 +116,8 @@ export default function AlumniConnect() {
         recipientId: partnerId,
         requesterEmail: user.email || "",
         recipientEmail: partnerEmail,
+        requesterName: currentUserName || user.displayName || "",
+        recipientName: partnerName || "",
         status: "pending",
         requestedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -117,7 +126,7 @@ export default function AlumniConnect() {
     );
   };
 
-  const openConnectedChat = async (partnerId: string, partnerEmail: string) => {
+  const openConnectedChat = async (partnerId: string, partnerEmail: string, partnerName: string) => {
     if (!user) return;
     const chatId = buildConnectionId(user.uid, partnerId);
     await setDoc(
@@ -127,6 +136,10 @@ export default function AlumniConnect() {
         participantEmails: {
           [user.uid]: user.email || "",
           [partnerId]: partnerEmail,
+        },
+        participantNames: {
+          [user.uid]: currentUserName || user.displayName || "",
+          [partnerId]: partnerName || "",
         },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -187,7 +200,7 @@ export default function AlumniConnect() {
             <Button
               size="sm"
               className="gap-1.5"
-              onClick={() => openConnectedChat(person.id, person.email)}
+              onClick={() => openConnectedChat(person.id, person.email, person.name || "")}
             >
               <MessageCircle className="h-3.5 w-3.5" />
               Chat
@@ -197,7 +210,7 @@ export default function AlumniConnect() {
           <Button
             size="sm"
             className="gap-1.5"
-            onClick={() => sendConnectionRequest(person.id, person.email)}
+            onClick={() => sendConnectionRequest(person.id, person.email, person.name || "")}
             disabled={status === "pending"}
           >
             <MessageCircle className="h-3.5 w-3.5" />

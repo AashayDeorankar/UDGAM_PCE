@@ -15,10 +15,25 @@ function loadEnv() {
   for (const envPath of candidates) {
     try {
       const content = readFileSync(envPath, "utf-8");
-      for (const line of content.split("\n")) {
+      const lines = content.split("\n");
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
         const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
         if (!m) continue;
-        process.env[m[1]] = m[2].replace(/^["']|["']$/g, "").trim();
+        const key = m[1];
+        let value = m[2];
+
+        if (key === "FIREBASE_SERVICE_ACCOUNT_JSON" && value.trim().startsWith("{") && !value.includes("}")) {
+          const collected = [value];
+          while (i + 1 < lines.length) {
+            i += 1;
+            collected.push(lines[i]);
+            if (lines[i].includes("}")) break;
+          }
+          value = collected.join("\n");
+        }
+
+        process.env[key] = value.replace(/^["']|["']$/g, "").trim();
       }
       return;
     } catch (_) {
