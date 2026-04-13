@@ -79,6 +79,17 @@ const server = http.createServer(async (req, res) => {
 
   const isBookSession = pathname === "/api/book-session" || pathname.endsWith("/book-session");
 
+  // GET /api/health – simple health check for Render
+  if (pathname === "/api/health" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "ok",
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    }));
+    return;
+  }
+
   // POST /api/book-session – check first, exact path
   if ((req.method || "").toUpperCase() === "POST" && isBookSession) {
     console.log("[api] POST /api/book-session");
