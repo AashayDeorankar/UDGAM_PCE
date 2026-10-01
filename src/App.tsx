@@ -28,6 +28,13 @@ import Profile from "./pages/Profile";
 import RequestsPage from "./pages/RequestsPage";
 import PersonalAnalysis from "./pages/PersonalAnalysis";
 import NotFound from "./pages/NotFound";
+import RecruiterDashboard from "./pages/RecruiterDashboard";
+import RecruiterAnalysis from "./pages/RecruiterAnalysis";
+import CreateJob from "./pages/CreateJob";
+import JobApplicants from "./pages/JobApplicants";
+import StudentJobs from "./pages/StudentJobs";
+import StudentApplications from "./pages/StudentApplications";
+import JobDetail from "./pages/JobDetail";
 import { InboxFab } from "@/components/InboxFab";
 
 const queryClient = new QueryClient();
@@ -99,6 +106,14 @@ const App = () => (
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/personal-analysis" element={<ProtectedRoute><PersonalAnalysis /></ProtectedRoute>} />
             <Route path="/requests" element={<ProtectedRoute><RequestsPage /></ProtectedRoute>} />
+            <Route path="/recruiter" element={<ProtectedRoute role="recruiter"><RecruiterDashboard /></ProtectedRoute>} />
+            <Route path="/recruiter/analyze" element={<ProtectedRoute role="recruiter"><RecruiterAnalysis /></ProtectedRoute>} />
+            <Route path="/recruiter/create-job" element={<ProtectedRoute role="recruiter"><CreateJob /></ProtectedRoute>} />
+            <Route path="/recruiter/jobs/:jobId/applicants" element={<ProtectedRoute role="recruiter"><JobApplicants /></ProtectedRoute>} />
+            <Route path="/recruiter/candidate/:jobId/:appId" element={<ProtectedRoute role="recruiter"><JobApplicants /></ProtectedRoute>} />
+            <Route path="/jobs" element={<ProtectedRoute><StudentJobs /></ProtectedRoute>} />
+            <Route path="/student/applications" element={<ProtectedRoute><StudentApplications /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -10,7 +10,7 @@ import {
   setPersistence,
   browserLocalPersistence,
 } from "firebase/auth";
-import { getFirebaseAuth, getFirestoreDb } from "@/integrations/firebase/config";
+import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from "@/integrations/firebase/config";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getApiBase } from "@/lib/api-base";
 
@@ -25,23 +25,25 @@ function getAdminEmails(): string[] {
   return fromEnv.length > 0 ? fromEnv : DEFAULT_ADMIN_EMAILS;
 }
 
+export type UserRole = "student" | "alumni" | "recruiter" | "tpo" | "admin";
+
 interface AuthContextType {
   user: User | null;
   session: null;
   loading: boolean;
   isAdmin: boolean;
-  role: "student" | "alumni" | null;
+  role: UserRole | null;
   /** Set when Google sign-in fails (e.g. user cancelled popup). Clear after reading. */
   redirectError: Error | null;
   signUp: (
     email: string,
     password: string,
-    role: "student" | "alumni",
+    role: UserRole,
     profile?: Record<string, string>
   ) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string, role?: "student" | "alumni") => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, role?: UserRole) => Promise<{ error: Error | null }>;
   signInWithGoogle: (
-    role: "student" | "alumni",
+    role: UserRole,
     profile?: Record<string, string>
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -50,39 +52,80 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function createDemoUser(email?: string, name?: string, role: UserRole = "student"): User {
+  const chosenEmail = email || (role === "alumni" ? "alumni@techprep.edu" : role === "recruiter" ? "recruiter@techprep.edu" : "student@techprep.edu");
+  const chosenName = name || (role === "alumni" ? "Demo Alumni" : role === "recruiter" ? "Sarah (Recruiter)" : "Demo Student");
+  return {
+    uid: "demo-" + role,
+    email: chosenEmail,
+    displayName: chosenName,
+    photoURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+    emailVerified: true,
+    isAnonymous: false,
+    metadata: {},
+    providerData: [],
+    refreshToken: "demo-token",
+    tenantId: null,
+    delete: async () => {},
+    getIdToken: async () => "demo-token",
+    getIdTokenResult: async () => ({} as any),
+    reload: async () => {},
+    toJSON: () => ({}),
+    phoneNumber: null,
+    providerId: "demo",
+  } as unknown as User;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [redirectError, setRedirectError] = useState<Error | null>(null);
-  const [role, setRole] = useState<"student" | "alumni" | null>(null);
-  const roleRef = useRef<"student" | "alumni" | null>(null);
-  const auth = getFirebaseAuth();
-  const db = getFirestoreDb();
+  const [role, setRole] = useState<UserRole | null>(null);
+  const roleRef = useRef<UserRole | null>(null);
+  const auth = isFirebaseConfigured ? getFirebaseAuth() : null;
+  const db = isFirebaseConfigured ? getFirestoreDb() : null;
   const pendingRoleKey = "techprep.pendingRole";
   const storedRoleKey = "techprep.selectedRole";
   const pendingProfileKey = "techprep.pendingProfile";
 
   const ensureProfile = async (
     firebaseUser: User,
-    preferredRole?: "student" | "alumni",
+    preferredRole?: UserRole,
     profile?: Record<string, string>
   ) => {
+    if (!isFirebaseConfigured || !db) {
+      setRole(preferredRole || "student");
+      return;
+    }
     const userRef = doc(db, "users", firebaseUser.uid);
     const alumniRef = doc(db, "alumni", firebaseUser.uid);
     const studentRef = doc(db, "students", firebaseUser.uid);
+    const recruiterRef = doc(db, "recruiters", firebaseUser.uid);
     const snap = await getDoc(userRef);
-    let resolvedRole = preferredRole || "student";
+    let resolvedRole: UserRole = preferredRole || "student";
     if (!preferredRole) {
-      const alumniSnap = await getDoc(alumniRef);
-      if (alumniSnap.exists()) {
-        resolvedRole = "alumni";
+      const recruiterSnap = await getDoc(recruiterRef);
+      if (recruiterSnap.exists()) {
+        resolvedRole = "recruiter";
       } else {
-        const studentSnap = await getDoc(studentRef);
-        if (studentSnap.exists()) {
-          resolvedRole = "student";
+        const alumniSnap = await getDoc(alumniRef);
+        if (alumniSnap.exists()) {
+          resolvedRole = "alumni";
+        } else {
+          const studentSnap = await getDoc(studentRef);
+          if (studentSnap.exists()) {
+            resolvedRole = "student";
+          }
         }
       }
     }
+
+    const roleCollectionRef =
+      resolvedRole === "recruiter"
+        ? recruiterRef
+        : resolvedRole === "alumni"
+          ? alumniRef
+          : studentRef;
 
     if (!snap.exists()) {
       await setDoc(userRef, {
@@ -94,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: serverTimestamp(),
       });
       await setDoc(
-        resolvedRole === "alumni" ? alumniRef : studentRef,
+        roleCollectionRef,
         {
           email: firebaseUser.email || "",
           role: resolvedRole,
@@ -110,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = snap.data() as {
-      role?: "student" | "alumni";
+      role?: UserRole;
       membershipTier?: string;
       alumniSessionsUsed?: number;
       name?: string;
@@ -123,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       position?: string;
     };
     const currentRole = data?.role || "student";
-    const roleToSet = profile
+    const roleToSet: UserRole = profile
       ? (preferredRole || resolvedRole || currentRole)
       : (data?.role || preferredRole || resolvedRole || currentRole);
     const profilePatch: Record<string, unknown> = {
@@ -141,8 +184,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const shouldMergeProfile = Boolean(profile) || roleToSet !== currentRole || profilePatch.membershipTier || profilePatch.alumniSessionsUsed === 0;
     if (shouldMergeProfile) {
       await setDoc(userRef, profilePatch, { merge: true });
+      const targetRoleRef =
+        roleToSet === "recruiter"
+          ? recruiterRef
+          : roleToSet === "alumni"
+            ? alumniRef
+            : studentRef;
       await setDoc(
-        roleToSet === "alumni" ? alumniRef : studentRef,
+        targetRoleRef,
         {
           email: firebaseUser.email || "",
           role: roleToSet,
@@ -185,6 +234,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [role]);
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !auth) {
+      const stored = window.localStorage.getItem("techprep.demoUser");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setUser(parsed.user);
+          setRole(parsed.role || "student");
+        } catch {
+          const defaultUser = createDemoUser();
+          setUser(defaultUser);
+          setRole("student");
+        }
+      } else {
+        const defaultUser = createDemoUser();
+        setUser(defaultUser);
+        setRole("student");
+        window.localStorage.setItem(
+          "techprep.demoUser",
+          JSON.stringify({ user: defaultUser, role: "student" }),
+        );
+      }
+      setLoading(false);
+      return;
+    }
+
     setPersistence(auth, browserLocalPersistence).catch(() => {});
     let nullTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -192,11 +266,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (nullTimeoutId) clearTimeout(nullTimeoutId);
         nullTimeoutId = null;
         setUser(firebaseUser);
-        let preferredRole: "student" | "alumni" | undefined;
+        let preferredRole: UserRole | undefined;
         let pendingProfile: Record<string, string> | undefined;
         try {
-          const raw = window.sessionStorage.getItem(pendingRoleKey);
-          if (raw === "student" || raw === "alumni") preferredRole = raw;
+          const raw = window.sessionStorage.getItem(pendingRoleKey) as UserRole | null;
+          if (raw === "student" || raw === "alumni" || raw === "recruiter") preferredRole = raw;
           if (preferredRole) window.sessionStorage.removeItem(pendingRoleKey);
         } catch (_) {
           // ignore
@@ -213,8 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (!preferredRole) {
           try {
-            const stored = window.localStorage.getItem(storedRoleKey);
-            if (stored === "student" || stored === "alumni") preferredRole = stored;
+            const stored = window.localStorage.getItem(storedRoleKey) as UserRole | null;
+            if (stored === "student" || stored === "alumni" || stored === "recruiter") preferredRole = stored;
           } catch (_) {
             // ignore
           }
@@ -239,8 +313,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })();
         return;
       }
-      // Firebase often fires once with null before restoring persisted session.
-      // Delay treating null as "logged out" so we don't flash the login page.
       if (nullTimeoutId) clearTimeout(nullTimeoutId);
       nullTimeoutId = setTimeout(() => {
         nullTimeoutId = null;
@@ -258,9 +330,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (
     email: string,
     password: string,
-    preferredRole: "student" | "alumni",
+    preferredRole: UserRole,
     profile?: Record<string, string>
   ) => {
+    if (!isFirebaseConfigured || !auth) {
+      const newUser = createDemoUser(email, profile?.fullName, preferredRole);
+      setUser(newUser);
+      setRole(preferredRole);
+      window.localStorage.setItem(
+        "techprep.demoUser",
+        JSON.stringify({ user: newUser, role: preferredRole, profile }),
+      );
+      return { error: null };
+    }
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       void ensureProfile(cred.user, preferredRole, profile);
@@ -270,7 +352,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string, preferredRole?: "student" | "alumni") => {
+  const signIn = async (email: string, password: string, preferredRole?: UserRole) => {
+    if (!isFirebaseConfigured || !auth) {
+      const r = preferredRole || "student";
+      const loggedUser = createDemoUser(email, undefined, r);
+      setUser(loggedUser);
+      setRole(r);
+      window.localStorage.setItem(
+        "techprep.demoUser",
+        JSON.stringify({ user: loggedUser, role: r }),
+      );
+      return { error: null };
+    }
     try {
       if (preferredRole) {
         try {
@@ -296,9 +389,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async (
-    preferredRole: "student" | "alumni",
+    preferredRole: UserRole,
     profile?: Record<string, string>
   ) => {
+    if (!isFirebaseConfigured || !auth) {
+      const r = preferredRole || "student";
+      const gUser = createDemoUser("google.user@techprep.edu", "Google Demo Student", r);
+      setUser(gUser);
+      setRole(r);
+      window.localStorage.setItem(
+        "techprep.demoUser",
+        JSON.stringify({ user: gUser, role: r, profile }),
+      );
+      return { error: null };
+    }
     try {
       try {
         window.sessionStorage.setItem(pendingRoleKey, preferredRole);
@@ -326,6 +430,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearRedirectError = useCallback(() => setRedirectError(null), []);
 
   const signOut = async () => {
+    if (!isFirebaseConfigured || !auth) {
+      window.localStorage.removeItem("techprep.demoUser");
+      setUser(null);
+      setRole(null);
+      return;
+    }
     await firebaseSignOut(auth);
   };
 

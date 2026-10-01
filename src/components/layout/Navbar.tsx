@@ -6,13 +6,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import logoImage from "@/assets/logo.png";
 import { UpgradePlanModal } from "@/components/UpgradePlanModal";
-import { getFirestoreDb } from "@/integrations/firebase/config";
+import { getFirestoreDb, isFirebaseConfigured } from "@/integrations/firebase/config";
 import { doc, onSnapshot } from "firebase/firestore";
 import { type MembershipTier, normalizeMembershipTier } from "@/lib/membership";
 import { getApiBase } from "@/lib/api-base";
 
 const studentLinks = [
   { name: "Connect", href: "/connect" },
+  { name: "Jobs", href: "/jobs" },
   { name: "Resources", href: "/#branches" },
   { name: "Interview Prep", href: "/interview-prep" },
   { name: "AI Mock Interview", href: "/mock-interview" },
@@ -26,6 +27,12 @@ const alumniLinks = [
   { name: "Inbox", href: "/alumni/inbox" },
   { name: "AI Assistant", href: "/ai-assistant" },
   { name: "Resources", href: "/resources" },
+];
+
+const recruiterLinks = [
+  { name: "Recruiter Hub", href: "/recruiter" },
+  { name: "Post Job", href: "/recruiter/create-job" },
+  { name: "AI Analysis", href: "/recruiter/analyze" },
 ];
 
 const isLikelyS3 = (url: string) => /amazonaws\.com/i.test(url) || /\.s3\./i.test(url);
@@ -42,34 +49,45 @@ export function Navbar() {
   const [userName, setUserName] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [profileImageDisplayUrl, setProfileImageDisplayUrl] = useState("");
-  const navLinks = role === "alumni" ? alumniLinks : studentLinks;
-  const showUpgrade = role !== "alumni";
+  const navLinks = role === "alumni" ? alumniLinks : role === "recruiter" ? recruiterLinks : studentLinks;
+  const showUpgrade = role !== "alumni" && role !== "recruiter";
 
   useEffect(() => {
     if (!user) {
       setMembershipTier("free");
       return;
     }
-    const unsub = onSnapshot(
-      doc(db, "users", user.uid),
-      (snap) => {
-        if (!snap.exists()) {
+    if (!isFirebaseConfigured || !db) {
+      // Firebase not configured — skip Firestore, show defaults from auth
+      setUserName((user.displayName || "").trim());
+      return;
+    }
+    let unsub: (() => void) | undefined;
+    try {
+      unsub = onSnapshot(
+        doc(db, "users", user.uid),
+        (snap) => {
+          if (!snap.exists()) {
+            setMembershipTier("free");
+            setUserName("");
+            return;
+          }
+          const data = snap.data() as { membershipTier?: string; name?: string; profileImageUrl?: string };
+          setMembershipTier(normalizeMembershipTier(data.membershipTier));
+          setUserName((data.name || user.displayName || "").trim());
+          setProfileImageUrl(data.profileImageUrl || "");
+        },
+        () => {
           setMembershipTier("free");
           setUserName("");
-          return;
-        }
-        const data = snap.data() as { membershipTier?: string; name?: string; profileImageUrl?: string };
-        setMembershipTier(normalizeMembershipTier(data.membershipTier));
-        setUserName((data.name || user.displayName || "").trim());
-        setProfileImageUrl(data.profileImageUrl || "");
-      },
-      () => {
-        setMembershipTier("free");
-        setUserName("");
-        setProfileImageUrl("");
-      },
-    );
-    return () => unsub();
+          setProfileImageUrl("");
+        },
+      );
+    } catch {
+      // Firestore unavailable (e.g. blocked by ad blocker or misconfigured)
+      setUserName((user.displayName || "").trim());
+    }
+    return () => unsub?.();
   }, [db, user]);
 
   useEffect(() => {

@@ -3,13 +3,19 @@ import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
+export const isFirebaseConfigured = Boolean(
+  import.meta.env.VITE_FIREBASE_API_KEY &&
+  import.meta.env.VITE_FIREBASE_API_KEY !== "your-api-key" &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID
+);
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyDevKeyForLocalTesting123456789",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "techprep-demo.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "techprep-demo",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "techprep-demo.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789012:web:demo123456789012",
 };
 
 let app: FirebaseApp;
@@ -17,35 +23,54 @@ let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
 
-function getFirebaseApp(): FirebaseApp {
-  if (!app) {
-    app = initializeApp(firebaseConfig);
+function getFirebaseApp(): FirebaseApp | null {
+  try {
+    if (!app) {
+      app = initializeApp(firebaseConfig);
+    }
+    return app;
+  } catch {
+    return null;
   }
-  return app;
 }
 
-function getFirebaseAuth(): Auth {
-  if (!auth) {
-    getFirebaseApp();
-    auth = getAuth(app);
+function getFirebaseAuth(): Auth | null {
+  try {
+    if (!auth) {
+      const a = getFirebaseApp();
+      if (!a) return null;
+      auth = getAuth(a);
+    }
+    return auth;
+  } catch {
+    return null;
   }
-  return auth;
 }
 
-function getFirestoreDb(): Firestore {
-  if (!db) {
-    getFirebaseApp();
-    db = getFirestore(app);
+function getFirestoreDb(): Firestore | null {
+  try {
+    if (!db) {
+      const a = getFirebaseApp();
+      if (!a) return null;
+      db = getFirestore(a);
+    }
+    return db;
+  } catch {
+    return null;
   }
-  return db;
 }
 
-function getFirebaseStorage(): FirebaseStorage {
-  if (!storage) {
-    getFirebaseApp();
-    storage = getStorage(app);
+function getFirebaseStorage(): FirebaseStorage | null {
+  try {
+    if (!storage) {
+      const a = getFirebaseApp();
+      if (!a) return null;
+      storage = getStorage(a);
+    }
+    return storage;
+  } catch {
+    return null;
   }
-  return storage;
 }
 
 export { getFirebaseAuth, getFirestoreDb, getFirebaseStorage };

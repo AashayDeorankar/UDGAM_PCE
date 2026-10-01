@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { mentors as allMentors } from "@/data/mentors";
 import type { Mentor } from "@/data/mentors";
 import { getMentorImageUrl } from "@/lib/mentor-image";
-import { getFirestoreDb } from "@/integrations/firebase/config";
+import { getFirestoreDb, isFirebaseConfigured } from "@/integrations/firebase/config";
 import { doc, onSnapshot } from "firebase/firestore";
 import { type MembershipTier, getMentorPriceLabel, normalizeMembershipTier } from "@/lib/membership";
 
@@ -63,22 +63,33 @@ export function MentorsSection() {
       setMembershipTier("free");
       return;
     }
-    const unsub = onSnapshot(
-      doc(db, "users", user.uid),
-      (snap) => {
-        if (!snap.exists()) {
+    if (!isFirebaseConfigured || !db) {
+      // Firebase not configured — keep free tier
+      return;
+    }
+    let unsub: (() => void) | undefined;
+    try {
+      unsub = onSnapshot(
+        doc(db, "users", user.uid),
+        (snap) => {
+          if (!snap.exists()) {
+            setMembershipTier("free");
+            return;
+          }
+          const data = snap.data() as { membershipTier?: string; alumniSessionsUsed?: number };
+          setMembershipTier(normalizeMembershipTier(data.membershipTier));
+        },
+        () => {
           setMembershipTier("free");
-          return;
-        }
-        const data = snap.data() as { membershipTier?: string; alumniSessionsUsed?: number };
-        setMembershipTier(normalizeMembershipTier(data.membershipTier));
-      },
-      () => {
-        setMembershipTier("free");
-      },
-    );
-    return () => unsub();
+        },
+      );
+    } catch {
+      // Firestore unavailable — keep free tier
+      setMembershipTier("free");
+    }
+    return () => unsub?.();
   }, [db, user]);
+
 
   return (
     <section id="mentors" className="section-padding pt-12 md:pt-16 lg:pt-20 pb-12 md:pb-16 lg:pb-20 bg-secondary/30 relative overflow-hidden">

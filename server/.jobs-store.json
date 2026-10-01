@@ -1,0 +1,894 @@
+{
+  "jobs": {
+    "o11q3sh7jxcmupeqlki": {
+      "id": "o11q3sh7jxcmupeqlki",
+      "title": "Senior Full Stack Engineer",
+      "description": "Looking for a Senior Full Stack Engineer proficient in React, Node.js, TypeScript, PostgreSQL, and Docker containerization.",
+      "companyName": "TechCorp Innovations",
+      "requiredSkills": [
+        "React",
+        "Node.js",
+        "TypeScript",
+        "Docker",
+        "PostgreSQL"
+      ],
+      "preferredSkills": [
+        "Kubernetes",
+        "Redis",
+        "AWS"
+      ],
+      "requiredExperience": "",
+      "preferredExperience": "",
+      "education": "",
+      "location": "Remote",
+      "workMode": "",
+      "shortlistSize": 5,
+      "status": "open",
+      "createdBy": "recruiter-demo",
+      "recruiterName": "",
+      "deadline": null,
+      "applicantCount": 2,
+      "analyzedCount": 2,
+      "createdAt": "2026-10-01T10:44:50.228Z",
+      "_id": "o11q3sh7jxcmupeqlki",
+      "jdAnalysis": {
+        "title": "Senior Full Stack Engineer",
+        "required_skills": [
+          "React",
+          "Node.js",
+          "TypeScript",
+          "Docker",
+          "PostgreSQL"
+        ],
+        "preferred_skills": [
+          "Kubernetes",
+          "Redis",
+          "AWS"
+        ],
+        "experience_min_years": 0,
+        "experience_max_years": 3,
+        "education_requirement": null,
+        "key_responsibilities": [],
+        "technical_concepts": [],
+        "synonyms": {},
+        "requirement_priority": {}
+      },
+      "jdAnalyzedAt": "2026-10-01T10:44:50.229Z"
+    },
+    "xmhh76gzcxmupev0nj": {
+      "id": "xmhh76gzcxmupev0nj",
+      "title": "Frontend",
+      "description": "asdfghjkl;qwertyuiop",
+      "companyName": "asdfghjkl",
+      "requiredSkills": [
+        "HTML"
+      ],
+      "preferredSkills": [],
+      "requiredExperience": "",
+      "preferredExperience": "",
+      "education": "",
+      "location": "",
+      "workMode": "",
+      "shortlistSize": 5,
+      "status": "open",
+      "createdBy": "demo-recruiter",
+      "recruiterName": "Recruiter",
+      "deadline": null,
+      "applicantCount": 1,
+      "analyzedCount": 1,
+      "createdAt": "2026-10-01T10:48:16.401Z",
+      "_id": "xmhh76gzcxmupev0nj",
+      "jdAnalysis": {
+        "title": "Frontend",
+        "required_skills": [
+          "HTML"
+        ],
+        "preferred_skills": [],
+        "experience_min_years": 0,
+        "experience_max_years": 3,
+        "education_requirement": null,
+        "key_responsibilities": [],
+        "technical_concepts": [],
+        "synonyms": {},
+        "requirement_priority": {}
+      },
+      "jdAnalyzedAt": "2026-10-01T10:48:16.402Z"
+    },
+    "86t4p629fwmupf754p": {
+      "id": "86t4p629fwmupf754p",
+      "title": "Senior Full Stack Engineer",
+      "description": "Looking for a Senior Full Stack Engineer proficient in React, Node.js, TypeScript, PostgreSQL, and Docker containerization.",
+      "companyName": "TechCorp Innovations",
+      "requiredSkills": [
+        "React",
+        "Node.js",
+        "TypeScript",
+        "Docker",
+        "PostgreSQL"
+      ],
+      "preferredSkills": [
+        "Kubernetes",
+        "Redis",
+        "AWS"
+      ],
+      "requiredExperience": "",
+      "preferredExperience": "",
+      "education": "",
+      "location": "Remote",
+      "workMode": "",
+      "shortlistSize": 5,
+      "status": "open",
+      "createdBy": "recruiter-demo",
+      "recruiterName": "",
+      "deadline": null,
+      "applicantCount": 2,
+      "analyzedCount": 2,
+      "createdAt": "2026-10-01T10:57:42.076Z",
+      "_id": "86t4p629fwmupf754p",
+      "jdAnalysis": {
+        "title": "Senior Full Stack Engineer",
+        "required_skills": [
+          "React",
+          "Node.js",
+          "TypeScript",
+          "Docker",
+          "PostgreSQL"
+        ],
+        "preferred_skills": [
+          "Kubernetes",
+          "Redis",
+          "AWS"
+        ],
+        "experience_min_years": 0,
+        "experience_max_years": 3,
+        "education_requirement": null,
+        "key_responsibilities": [],
+        "technical_concepts": [],
+        "synonyms": {},
+        "requirement_priority": {}
+      },
+      "jdAnalyzedAt": "2026-10-01T10:57:42.077Z"
+    }
+  },
+  "applications": {
+    "ygtd8mnxtdmupeqlls": {
+      "id": "ygtd8mnxtdmupeqlls",
+      "jobId": "o11q3sh7jxcmupeqlki",
+      "jobTitle": "Senior Full Stack Engineer",
+      "companyName": "TechCorp Innovations",
+      "studentId": "student-alex",
+      "applicantUid": "student-alex",
+      "studentName": "Alex Johnson",
+      "studentEmail": "alex@example.com",
+      "resumeText": "Alex Johnson\nSoftware Engineer with 3 years building web interfaces with React and JavaScript.\nExperience:\n- Frontend Engineer at WebCo (2022-2024): Built dashboard using React and CSS.\n- Junior Dev at StartupX (2021-2022): Worked on HTML/CSS and basic APIs.\nSkills: React, JavaScript, HTML, CSS, Git, Python",
+      "resumeFileName": "Alex_Johnson_Resume.txt",
+      "status": "rejected",
+      "aiStatus": "analyzed",
+      "rejectionReason": "Missing required technical skills: Docker and PostgreSQL. Resume lacks demonstrated backend production experience.",
+      "decisionNotes": null,
+      "decidedAt": "2026-10-01T10:44:50.340Z",
+      "decidedBy": "Lead Recruiter",
+      "submittedAt": "2026-10-01T10:44:50.272Z",
+      "_id": "ygtd8mnxtdmupeqlls"
+    },
+    "wmctxmkgspjmupeqlm7": {
+      "id": "wmctxmkgspjmupeqlm7",
+      "jobId": "o11q3sh7jxcmupeqlki",
+      "jobTitle": "Senior Full Stack Engineer",
+      "companyName": "TechCorp Innovations",
+      "studentId": "student-ria",
+      "applicantUid": "student-ria",
+      "studentName": "Ria Sharma",
+      "studentEmail": "ria@example.com",
+      "resumeText": "Ria Sharma\nSenior Engineer with 5 years experience in React, Node.js, TypeScript, PostgreSQL, Docker.\nExperience:\n- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.\n- Frontend Engineer at TechWorks (2019-2021): Built React web applications with state management.\nSkills: React, Node.js, TypeScript, Docker, PostgreSQL, Redis, AWS",
+      "resumeFileName": "Ria_Sharma_Resume.txt",
+      "status": "accepted",
+      "aiStatus": "analyzed",
+      "rejectionReason": null,
+      "decisionNotes": "Exceptional match with verified Docker and PostgreSQL production evidence. Shortlisted for Technical Round 1.",
+      "decidedAt": "2026-10-01T10:44:50.349Z",
+      "decidedBy": "Lead Recruiter",
+      "submittedAt": "2026-10-01T10:44:50.287Z",
+      "_id": "wmctxmkgspjmupeqlm7"
+    },
+    "eg6acta91vfmupevylb": {
+      "id": "eg6acta91vfmupevylb",
+      "jobId": "xmhh76gzcxmupev0nj",
+      "jobTitle": "Frontend",
+      "companyName": "asdfghjkl",
+      "studentId": "stu_1790851739572",
+      "applicantUid": "stu_1790851739572",
+      "studentName": "Rishi",
+      "studentEmail": "rishi@gmail.com",
+      "resumeText": "Rohan Mehta\nBackend Developer | rohan.mehta@example.com | +91 91111 67890 | Bengaluru, India |\ngithub.com/rohanmehta\nPROFESSIONAL SUMMARY\nBackend Developer with 4 years of experience designing REST APIs and scalable server-side services. Strong in\nPython, Node.js, PostgreSQL, and distributed application fundamentals, with practical experience in authentication,\ncaching, background jobs, and cloud deployment.\nTECHNICAL SKILLS\nLanguages: Python, JavaScript, SQL\nFrameworks & Tools: Node.js, Express, FastAPI, Django\nOther: PostgreSQL, Redis, MongoDB, Docker, AWS, REST APIs, JWT, Git, CI/CD\nEXPERIENCE\nCloudRoute Systems — Backend Developer | 2022–Present\n• Designed and maintained Python and Node.js REST APIs supporting web and mobile clients.\n• Built PostgreSQL data models and optimized queries for high-volume transactional workflows.\n• Implemented JWT authentication, role-based authorization, Redis caching, and background processing.\n• Containerized services with Docker and supported deployments on AWS using CI/CD pipelines.\nDataNest Labs — Software Engineer | 2021–2022\n• Developed Express.js APIs for internal analytics and customer management systems.\n• Integrated third-party APIs and implemented validation, logging, and structured error handling.\n• Wrote automated unit and integration tests for core backend services.\nPROJECTS\nOrder Processing API\nFastAPI and PostgreSQL service handling order creation, validation, status transitions, and asynchronous notification jobs. Added\nRedis caching and API authentication.\nReal-Time Notification Service\nNode.js service using WebSockets and Redis pub/sub to deliver real-time application notifications to connected clients.\nEDUCATION\nB.Tech in Computer Science and Engineering — Visvesvaraya Technological University, 2021\n\n-- 1 of 1 --",
+      "resumeFileName": "Backend_Developer_Resume.pdf",
+      "status": "applied",
+      "aiStatus": "analyzed",
+      "rejectionReason": null,
+      "decisionNotes": null,
+      "decidedAt": null,
+      "decidedBy": null,
+      "submittedAt": "2026-10-01T10:49:00.383Z",
+      "_id": "eg6acta91vfmupevylb"
+    },
+    "soysfgnychnmupf7569": {
+      "id": "soysfgnychnmupf7569",
+      "jobId": "86t4p629fwmupf754p",
+      "jobTitle": "Senior Full Stack Engineer",
+      "companyName": "TechCorp Innovations",
+      "studentId": "student-alex",
+      "applicantUid": "student-alex",
+      "studentName": "Alex Johnson",
+      "studentEmail": "alex@example.com",
+      "resumeText": "Alex Johnson\nSoftware Engineer with 3 years building web interfaces with React and JavaScript.\nExperience:\n- Frontend Engineer at WebCo (2022-2024): Built dashboard using React and CSS.\n- Junior Dev at StartupX (2021-2022): Worked on HTML/CSS and basic APIs.\nSkills: React, JavaScript, HTML, CSS, Git, Python",
+      "resumeFileName": "Alex_Johnson_Resume.txt",
+      "status": "rejected",
+      "aiStatus": "analyzed",
+      "rejectionReason": "Missing required technical skills: Docker and PostgreSQL. Resume lacks demonstrated backend production experience.",
+      "decisionNotes": null,
+      "decidedAt": "2026-10-01T10:57:42.220Z",
+      "decidedBy": "Lead Recruiter",
+      "submittedAt": "2026-10-01T10:57:42.129Z",
+      "_id": "soysfgnychnmupf7569"
+    },
+    "txkqr1aydxmupf756n": {
+      "id": "txkqr1aydxmupf756n",
+      "jobId": "86t4p629fwmupf754p",
+      "jobTitle": "Senior Full Stack Engineer",
+      "companyName": "TechCorp Innovations",
+      "studentId": "student-ria",
+      "applicantUid": "student-ria",
+      "studentName": "Ria Sharma",
+      "studentEmail": "ria@example.com",
+      "resumeText": "Ria Sharma\nSenior Engineer with 5 years experience in React, Node.js, TypeScript, PostgreSQL, Docker.\nExperience:\n- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.\n- Frontend Engineer at TechWorks (2019-2021): Built React web applications with state management.\nSkills: React, Node.js, TypeScript, Docker, PostgreSQL, Redis, AWS",
+      "resumeFileName": "Ria_Sharma_Resume.txt",
+      "status": "accepted",
+      "aiStatus": "analyzed",
+      "rejectionReason": null,
+      "decisionNotes": "Exceptional match with verified Docker and PostgreSQL production evidence. Shortlisted for Technical Round 1.",
+      "decidedAt": "2026-10-01T10:57:42.231Z",
+      "decidedBy": "Lead Recruiter",
+      "submittedAt": "2026-10-01T10:57:42.143Z",
+      "_id": "txkqr1aydxmupf756n"
+    }
+  },
+  "candidateAnalyses": {
+    "ygtd8mnxtdmupeqlls": {
+      "applicationId": "ygtd8mnxtdmupeqlls",
+      "jobId": "o11q3sh7jxcmupeqlki",
+      "studentId": "student-alex",
+      "name": "Alex Johnson",
+      "match_score": 29,
+      "factor_breakdown": {
+        "required_skill_coverage": 20,
+        "evidence_strength": 20,
+        "project_relevance": 20,
+        "experience_relevance": 74,
+        "preferred_coverage": 0,
+        "education_match": 100,
+        "noise_penalty": 0
+      },
+      "matched_requirements": [
+        {
+          "skill": "React",
+          "strength": "strong",
+          "evidence": "- Frontend Engineer at WebCo (2022-2024): Built dashboard using React and CSS."
+        }
+      ],
+      "missing_requirements": [
+        "Node.js",
+        "TypeScript",
+        "Docker",
+        "PostgreSQL"
+      ],
+      "uncertain_requirements": [],
+      "partially_matched": [],
+      "preferred_matched": [],
+      "noise": {
+        "noise_score": 0,
+        "noise_risk": "low",
+        "noise_flags": [],
+        "keyword_to_evidence_ratio": 1
+      },
+      "candidate_info": {
+        "name": "Alex Johnson",
+        "years_experience": 3,
+        "education": null,
+        "num_projects": 0,
+        "num_jobs": 2
+      },
+      "evidence": [
+        {
+          "skill": "React",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Frontend Engineer at WebCo (2022-2024): Built dashboard using React and CSS.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Node.js",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "TypeScript",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Docker",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "PostgreSQL",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Kubernetes",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Redis",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "AWS",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        }
+      ],
+      "skills_section_only": [],
+      "well_evidenced_skills": [
+        "React"
+      ],
+      "analyzedAt": "2026-10-01T10:44:50.314Z",
+      "_id": "ygtd8mnxtdmupeqlls",
+      "id": "ygtd8mnxtdmupeqlls"
+    },
+    "wmctxmkgspjmupeqlm7": {
+      "applicationId": "wmctxmkgspjmupeqlm7",
+      "jobId": "o11q3sh7jxcmupeqlki",
+      "studentId": "student-ria",
+      "name": "Ria Sharma",
+      "match_score": 94,
+      "factor_breakdown": {
+        "required_skill_coverage": 100,
+        "evidence_strength": 100,
+        "project_relevance": 100,
+        "experience_relevance": 100,
+        "preferred_coverage": 67,
+        "education_match": 100,
+        "noise_penalty": 0
+      },
+      "matched_requirements": [
+        {
+          "skill": "React",
+          "strength": "strong",
+          "evidence": "- Frontend Engineer at TechWorks (2019-2021): Built React web applications with state management."
+        },
+        {
+          "skill": "Node.js",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        },
+        {
+          "skill": "TypeScript",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        },
+        {
+          "skill": "Docker",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        },
+        {
+          "skill": "PostgreSQL",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        }
+      ],
+      "missing_requirements": [],
+      "uncertain_requirements": [],
+      "partially_matched": [],
+      "preferred_matched": [
+        "Redis",
+        "AWS"
+      ],
+      "noise": {
+        "noise_score": 0,
+        "noise_risk": "low",
+        "noise_flags": [
+          "No projects listed despite claiming multiple technical skills"
+        ],
+        "keyword_to_evidence_ratio": 1
+      },
+      "candidate_info": {
+        "name": "Ria Sharma",
+        "years_experience": 5,
+        "education": null,
+        "num_projects": 0,
+        "num_jobs": 2
+      },
+      "evidence": [
+        {
+          "skill": "React",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Frontend Engineer at TechWorks (2019-2021): Built React web applications with state management.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Node.js",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "TypeScript",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Docker",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "PostgreSQL",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Kubernetes",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Redis",
+          "found": true,
+          "strength": "moderate",
+          "source": "experience",
+          "evidence_text": "Skills: React, Node.js, TypeScript, Docker, PostgreSQL, Redis, AWS",
+          "context": "Demonstrated in work experience"
+        },
+        {
+          "skill": "AWS",
+          "found": true,
+          "strength": "moderate",
+          "source": "experience",
+          "evidence_text": "Skills: React, Node.js, TypeScript, Docker, PostgreSQL, Redis, AWS",
+          "context": "Demonstrated in work experience"
+        }
+      ],
+      "skills_section_only": [],
+      "well_evidenced_skills": [
+        "React",
+        "Node.js",
+        "TypeScript",
+        "Docker",
+        "PostgreSQL",
+        "Redis",
+        "AWS"
+      ],
+      "analyzedAt": "2026-10-01T10:44:50.319Z",
+      "_id": "wmctxmkgspjmupeqlm7",
+      "id": "wmctxmkgspjmupeqlm7"
+    },
+    "eg6acta91vfmupevylb": {
+      "applicationId": "eg6acta91vfmupevylb",
+      "jobId": "xmhh76gzcxmupev0nj",
+      "studentId": "stu_1790851739572",
+      "name": "Rishi",
+      "match_score": 18,
+      "factor_breakdown": {
+        "required_skill_coverage": 0,
+        "evidence_strength": 0,
+        "project_relevance": 0,
+        "experience_relevance": 100,
+        "preferred_coverage": 0,
+        "education_match": 100,
+        "noise_penalty": 20
+      },
+      "matched_requirements": [],
+      "missing_requirements": [
+        "HTML"
+      ],
+      "uncertain_requirements": [],
+      "partially_matched": [],
+      "preferred_matched": [],
+      "noise": {
+        "noise_score": 20,
+        "noise_risk": "low",
+        "noise_flags": [
+          "Low evidence depth: skills mentioned but rarely demonstrated in projects or work"
+        ],
+        "keyword_to_evidence_ratio": 0
+      },
+      "candidate_info": {
+        "name": "Rishi",
+        "years_experience": 4,
+        "education": "B.Tech in Computer Science and Engineering — Visvesvaraya Technological University",
+        "num_projects": 1,
+        "num_jobs": 5
+      },
+      "evidence": [
+        {
+          "skill": "HTML",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        }
+      ],
+      "skills_section_only": [],
+      "well_evidenced_skills": [],
+      "analyzedAt": "2026-10-01T10:51:55.454Z",
+      "_id": "eg6acta91vfmupevylb",
+      "id": "eg6acta91vfmupevylb"
+    },
+    "soysfgnychnmupf7569": {
+      "applicationId": "soysfgnychnmupf7569",
+      "jobId": "86t4p629fwmupf754p",
+      "studentId": "student-alex",
+      "name": "Alex Johnson",
+      "match_score": 29,
+      "factor_breakdown": {
+        "required_skill_coverage": 20,
+        "evidence_strength": 20,
+        "project_relevance": 20,
+        "experience_relevance": 74,
+        "preferred_coverage": 0,
+        "education_match": 100,
+        "noise_penalty": 0
+      },
+      "matched_requirements": [
+        {
+          "skill": "React",
+          "strength": "strong",
+          "evidence": "- Frontend Engineer at WebCo (2022-2024): Built dashboard using React and CSS."
+        }
+      ],
+      "missing_requirements": [
+        "Node.js",
+        "TypeScript",
+        "Docker",
+        "PostgreSQL"
+      ],
+      "uncertain_requirements": [],
+      "partially_matched": [],
+      "preferred_matched": [],
+      "noise": {
+        "noise_score": 0,
+        "noise_risk": "low",
+        "noise_flags": [],
+        "keyword_to_evidence_ratio": 1
+      },
+      "candidate_info": {
+        "name": "Alex Johnson",
+        "years_experience": 3,
+        "education": null,
+        "num_projects": 0,
+        "num_jobs": 2
+      },
+      "evidence": [
+        {
+          "skill": "React",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Frontend Engineer at WebCo (2022-2024): Built dashboard using React and CSS.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Node.js",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "TypeScript",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Docker",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "PostgreSQL",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Kubernetes",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Redis",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "AWS",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        }
+      ],
+      "skills_section_only": [],
+      "well_evidenced_skills": [
+        "React"
+      ],
+      "analyzedAt": "2026-10-01T10:57:42.187Z",
+      "_id": "soysfgnychnmupf7569",
+      "id": "soysfgnychnmupf7569"
+    },
+    "txkqr1aydxmupf756n": {
+      "applicationId": "txkqr1aydxmupf756n",
+      "jobId": "86t4p629fwmupf754p",
+      "studentId": "student-ria",
+      "name": "Ria Sharma",
+      "match_score": 94,
+      "factor_breakdown": {
+        "required_skill_coverage": 100,
+        "evidence_strength": 100,
+        "project_relevance": 100,
+        "experience_relevance": 100,
+        "preferred_coverage": 67,
+        "education_match": 100,
+        "noise_penalty": 0
+      },
+      "matched_requirements": [
+        {
+          "skill": "React",
+          "strength": "strong",
+          "evidence": "- Frontend Engineer at TechWorks (2019-2021): Built React web applications with state management."
+        },
+        {
+          "skill": "Node.js",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        },
+        {
+          "skill": "TypeScript",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        },
+        {
+          "skill": "Docker",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        },
+        {
+          "skill": "PostgreSQL",
+          "strength": "strong",
+          "evidence": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers."
+        }
+      ],
+      "missing_requirements": [],
+      "uncertain_requirements": [],
+      "partially_matched": [],
+      "preferred_matched": [
+        "Redis",
+        "AWS"
+      ],
+      "noise": {
+        "noise_score": 0,
+        "noise_risk": "low",
+        "noise_flags": [
+          "No projects listed despite claiming multiple technical skills"
+        ],
+        "keyword_to_evidence_ratio": 1
+      },
+      "candidate_info": {
+        "name": "Ria Sharma",
+        "years_experience": 5,
+        "education": null,
+        "num_projects": 0,
+        "num_jobs": 2
+      },
+      "evidence": [
+        {
+          "skill": "React",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Frontend Engineer at TechWorks (2019-2021): Built React web applications with state management.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Node.js",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "TypeScript",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Docker",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "PostgreSQL",
+          "found": true,
+          "strength": "strong",
+          "source": "experience",
+          "evidence_text": "- Full Stack Lead at CloudScale (2021-Present): Designed Node.js microservices with TypeScript and PostgreSQL, deployed via Docker containers.",
+          "context": "Applied with measurable impact in professional experience"
+        },
+        {
+          "skill": "Kubernetes",
+          "found": false,
+          "strength": "none",
+          "source": "not_found",
+          "evidence_text": null,
+          "context": null
+        },
+        {
+          "skill": "Redis",
+          "found": true,
+          "strength": "moderate",
+          "source": "experience",
+          "evidence_text": "Skills: React, Node.js, TypeScript, Docker, PostgreSQL, Redis, AWS",
+          "context": "Demonstrated in work experience"
+        },
+        {
+          "skill": "AWS",
+          "found": true,
+          "strength": "moderate",
+          "source": "experience",
+          "evidence_text": "Skills: React, Node.js, TypeScript, Docker, PostgreSQL, Redis, AWS",
+          "context": "Demonstrated in work experience"
+        }
+      ],
+      "skills_section_only": [],
+      "well_evidenced_skills": [
+        "React",
+        "Node.js",
+        "TypeScript",
+        "Docker",
+        "PostgreSQL",
+        "Redis",
+        "AWS"
+      ],
+      "analyzedAt": "2026-10-01T10:57:42.195Z",
+      "_id": "txkqr1aydxmupf756n",
+      "id": "txkqr1aydxmupf756n"
+    }
+  },
+  "analyses": {},
+  "shortlists": {
+    "xmhh76gzcxmupev0nj": {
+      "shortlisted": [
+        {
+          "rank": 1,
+          "applicationId": "eg6acta91vfmupevylb",
+          "studentId": "stu_1790851739572",
+          "name": "Rishi",
+          "match_score": 18,
+          "factor_breakdown": {
+            "required_skill_coverage": 0,
+            "evidence_strength": 0,
+            "project_relevance": 0,
+            "experience_relevance": 100,
+            "preferred_coverage": 0,
+            "education_match": 100,
+            "noise_penalty": 20
+          },
+          "matched_requirements": [],
+          "missing_requirements": [
+            "HTML"
+          ],
+          "uncertain_requirements": [],
+          "preferred_matched": [],
+          "noise": {
+            "noise_score": 20,
+            "noise_risk": "low",
+            "noise_flags": [
+              "Low evidence depth: skills mentioned but rarely demonstrated in projects or work"
+            ],
+            "keyword_to_evidence_ratio": 0
+          },
+          "candidate_info": {
+            "name": "Rishi",
+            "years_experience": 4,
+            "education": "B.Tech in Computer Science and Engineering — Visvesvaraya Technological University",
+            "num_projects": 1,
+            "num_jobs": 5
+          },
+          "why_shortlisted": [
+            "✓ Low keyword noise — evidence backs up all claims",
+            "✗ HTML not found"
+          ],
+          "watch_out": null
+        }
+      ],
+      "rejected": [],
+      "total_candidates": 1,
+      "shortlist_size_requested": 5,
+      "shortlist_size_achieved": 1,
+      "shortfall_explanation": "Only 1 of 5 requested spots filled. 4 more candidates below minimum evidence threshold (score < 15).",
+      "generated_at": "2026-10-01T10:52:02.715Z",
+      "jobId": "xmhh76gzcxmupev0nj",
+      "jobTitle": "Frontend",
+      "companyName": "asdfghjkl",
+      "_id": "xmhh76gzcxmupev0nj",
+      "id": "xmhh76gzcxmupev0nj"
+    }
+  }
+}

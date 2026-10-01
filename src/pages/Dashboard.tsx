@@ -21,6 +21,16 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/api-base";
 import { useNavigate } from "react-router-dom";
+import { useStudentApplications } from "@/hooks/useJobs";
+import {
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Award,
+  ArrowRight,
+} from "lucide-react";
 import {
   loadAssessmentResults,
   loadInterviewReports,
@@ -64,6 +74,7 @@ export default function Dashboard() {
       }
     }, [navigate, role]);
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResultRecord[]>([]);
+  const { applications: studentApps } = useStudentApplications(user?.uid);
   const [summary, setSummary] = useState<{ summary: string; strengths: string[]; weaknesses: string[]; suggestions: string[] } | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const lastSummaryRef = useRef<string | null>(null);
@@ -310,6 +321,109 @@ export default function Dashboard() {
               Track mock interview performance, speech analytics, and AI coaching insights based on your latest sessions.
             </p>
           </motion.div>
+
+          {/* Job Applications & Outcomes Section */}
+          {studentApps && studentApps.length > 0 && (
+            <div className="mb-10 border-2 border-black bg-white p-6 shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b-2 border-black/10 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-black text-white">
+                      <Briefcase className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-xl font-black">My Job Applications & Recruiter Decisions</h2>
+                  </div>
+                  <p className="text-xs text-black/60 mt-1">
+                    Real-time status updates, recruiter decisions, and feedback on your applications.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate("/student/applications")}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-black border-2 border-black px-3 py-1.5 bg-yellow-300 hover:bg-yellow-400 shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all self-start sm:self-auto"
+                >
+                  View All ({studentApps.length}) <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {studentApps.slice(0, 4).map((app) => {
+                  const isAccepted = app.status === "accepted";
+                  const isRejected = app.status === "rejected";
+
+                  return (
+                    <div
+                      key={app.id || app.applicationId}
+                      className={`border-2 border-black p-4 transition-all ${
+                        isAccepted
+                          ? "bg-emerald-50/70 border-emerald-600 shadow-[4px_4px_0_0_rgba(5,150,105,1)]"
+                          : isRejected
+                          ? "bg-red-50/70 border-red-600 shadow-[4px_4px_0_0_rgba(220,38,38,1)]"
+                          : "bg-neutral-50 shadow-[4px_4px_0_0_rgba(0,0,0,0.85)]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-base text-black">{app.jobTitle}</h3>
+                          <p className="text-xs text-black/70 flex items-center gap-1 font-medium mt-0.5">
+                            <Building2 className="h-3 w-3" /> {app.companyName}
+                          </p>
+                        </div>
+                        {isAccepted ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold bg-emerald-600 text-white border-2 border-black">
+                            <CheckCircle2 className="h-3 w-3" /> Accepted
+                          </span>
+                        ) : isRejected ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold bg-red-600 text-white border-2 border-black">
+                            <XCircle className="h-3 w-3" /> Not Selected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-900 border border-blue-400">
+                            Under Review
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Explicit Rejection Reason on Dashboard */}
+                      {isRejected && (
+                        <div className="mt-3 p-3 bg-white border-2 border-red-500 text-xs space-y-1.5">
+                          <p className="font-bold text-red-600 flex items-center gap-1 uppercase text-[10px] tracking-wider">
+                            <AlertCircle className="h-3.5 w-3.5" /> Rejection Reason:
+                          </p>
+                          <p className="text-black/85 font-mono text-[11px] leading-relaxed">
+                            “{app.rejectionReason || "Application did not meet key role requirements."}”
+                          </p>
+                          {app.missing_requirements && app.missing_requirements.length > 0 && (
+                            <div className="pt-1">
+                              <p className="text-[10px] font-semibold text-black/60">Skill Gaps to Improve:</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {app.missing_requirements.map((s, idx) => (
+                                  <span key={idx} className="px-1.5 py-0.5 text-[10px] font-mono bg-red-100 text-red-800 border border-red-300">
+                                    ✗ {s}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Accepted Next Steps */}
+                      {isAccepted && (
+                        <div className="mt-3 p-3 bg-white border-2 border-emerald-500 text-xs space-y-1">
+                          <p className="font-bold text-emerald-700 flex items-center gap-1 uppercase text-[10px] tracking-wider">
+                            <Award className="h-3.5 w-3.5" /> Next Steps:
+                          </p>
+                          <p className="text-black/85 text-[11px] leading-relaxed">
+                            {app.decisionNotes || "Congratulations! You have been shortlisted for the next interview round."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6 mb-10">
             {[

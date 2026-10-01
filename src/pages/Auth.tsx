@@ -38,7 +38,7 @@ const passwordSchema = z.string().min(6, "Password must be at least 6 characters
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(false);
-  const [role, setRole] = useState<"student" | "alumni">("student");
+  const [role, setRole] = useState<"student" | "alumni" | "recruiter">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -98,11 +98,16 @@ export default function Auth() {
   };
 
   const getRedirectUrl = (path?: string) => {
-    let target = path ?? redirectTo ?? "/";
-    if (!target || target === "/auth" || target.startsWith("/auth?")) target = "/";
-    return target.startsWith("http")
-      ? target
-      : `${window.location.origin}${target.startsWith("/") ? target : `/${target}`}`;
+    let targetPath = path ?? redirectTo;
+    if (role === "student" && targetPath && targetPath.startsWith("/recruiter")) {
+      targetPath = "/jobs";
+    }
+    if (!targetPath || targetPath === "/" || targetPath === "/auth" || targetPath.startsWith("/auth?")) {
+      targetPath = role === "recruiter" ? "/recruiter" : "/";
+    }
+    return targetPath.startsWith("http")
+      ? targetPath
+      : `${window.location.origin}${targetPath.startsWith("/") ? targetPath : `/${targetPath}`}`;
   };
 
   const doRedirect = (path?: string) => {
@@ -133,7 +138,7 @@ export default function Auth() {
     }, 300);
 
     return () => clearInterval(interval);
-  }, [user, loading, redirectTo]);
+  }, [user, loading, redirectTo, role]);
 
   const validateForm = () => {
     const newErrors: {
@@ -151,25 +156,29 @@ export default function Auth() {
 
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
-      newErrors.email = emailResult.error.errors[0].message;
+      newErrors.email = emailResult.error.errors[0]?.message;
     }
 
     const passwordResult = passwordSchema.safeParse(password);
     if (!passwordResult.success) {
-      newErrors.password = passwordResult.error.errors[0].message;
+      newErrors.password = passwordResult.error.errors[0]?.message;
     }
 
     if (!isLogin) {
       if (!fullName.trim()) newErrors.fullName = "Full name is required";
-      if (!domain.trim()) newErrors.domain = "Domain is required";
-      if (!collegeName.trim()) newErrors.collegeName = "College name is required";
+      if (role !== "recruiter" && !domain.trim()) newErrors.domain = "Domain is required";
 
       if (role === "student") {
+        if (!collegeName.trim()) newErrors.collegeName = "College name is required";
         if (!target.trim()) newErrors.target = "Target is required";
         if (!year.trim()) newErrors.year = "Year is required";
         if (!branch.trim()) newErrors.branch = "Branch is required";
+      } else if (role === "recruiter") {
+        if (!companyName.trim()) newErrors.companyName = "Company name is required";
+        if (!position.trim()) newErrors.position = "Role / Title is required";
       } else {
         if (!companyName.trim()) newErrors.companyName = "Company name is required";
+        if (!collegeName.trim()) newErrors.collegeName = "College name is required";
         if (!position.trim()) newErrors.position = "Position is required";
       }
     }
@@ -193,15 +202,19 @@ export default function Auth() {
     } = {};
 
     if (!fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!domain.trim()) newErrors.domain = "Domain is required";
-    if (!collegeName.trim()) newErrors.collegeName = "College name is required";
+    if (role !== "recruiter" && !domain.trim()) newErrors.domain = "Domain is required";
 
     if (role === "student") {
+      if (!collegeName.trim()) newErrors.collegeName = "College name is required";
       if (!target.trim()) newErrors.target = "Target is required";
       if (!year.trim()) newErrors.year = "Year is required";
       if (!branch.trim()) newErrors.branch = "Branch is required";
+    } else if (role === "recruiter") {
+      if (!companyName.trim()) newErrors.companyName = "Company name is required";
+      if (!position.trim()) newErrors.position = "Role / Title is required";
     } else {
       if (!companyName.trim()) newErrors.companyName = "Company name is required";
+      if (!collegeName.trim()) newErrors.collegeName = "College name is required";
       if (!position.trim()) newErrors.position = "Position is required";
     }
 
@@ -218,6 +231,13 @@ export default function Auth() {
         collegeName: collegeName.trim(),
         year: year.trim(),
         branch: branch.trim(),
+      };
+    }
+    if (role === "recruiter") {
+      return {
+        name: fullName.trim(),
+        companyName: companyName.trim(),
+        position: position.trim() || "Technical Recruiter",
       };
     }
     return {
@@ -274,7 +294,9 @@ export default function Auth() {
             description: "Successfully logged in.",
           });
           // Navigate immediately so user leaves login page; use microtask so route updates reliably
-          const target = redirectTo || "/";
+          const target = (role === "student" && redirectTo?.startsWith("/recruiter"))
+            ? "/jobs"
+            : (redirectTo && !redirectTo.startsWith("/recruiter") ? redirectTo : (role === "recruiter" ? "/recruiter" : "/"));
           setTimeout(() => navigate(target, { replace: true }), 0);
           requestAnimationFrame(() => scrollToTop());
         }
@@ -469,7 +491,7 @@ export default function Auth() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Continue as</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -506,6 +528,24 @@ export default function Auth() {
                   >
                     Alumni
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRole("recruiter");
+                      try {
+                        window.localStorage.setItem("techprep.selectedRole", "recruiter");
+                      } catch (_) {
+                        // ignore
+                      }
+                    }}
+                    className={`h-10 rounded-md border text-sm font-medium transition-colors ${
+                      role === "recruiter"
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-background text-foreground border-border"
+                    }`}
+                  >
+                    Recruiter
+                  </button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Role applies to new accounts and Google sign-in.
@@ -530,23 +570,28 @@ export default function Auth() {
                         <p className="text-sm text-destructive">{errors.fullName}</p>
                       )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="domain" className="text-sm font-medium">Domain</Label>
-                      <Input
-                        id="domain"
-                        value={domain}
-                        onChange={(e) => {
-                          setDomain(e.target.value);
-                          setErrors((prev) => ({ ...prev, domain: undefined }));
-                        }}
-                        placeholder="Backend, AI/ML, Product"
-                        className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
-                      />
-                      {errors.domain && (
-                        <p className="text-sm text-destructive">{errors.domain}</p>
-                      )}
-                    </div>
-                    {role === "student" ? (
+                    {/* Domain — hidden for recruiters */}
+                    {role !== "recruiter" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="domain" className="text-sm font-medium">Domain</Label>
+                        <Input
+                          id="domain"
+                          value={domain}
+                          onChange={(e) => {
+                            setDomain(e.target.value);
+                            setErrors((prev) => ({ ...prev, domain: undefined }));
+                          }}
+                          placeholder="Backend, AI/ML, Product"
+                          className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                        />
+                        {errors.domain && (
+                          <p className="text-sm text-destructive">{errors.domain}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Student-specific fields */}
+                    {role === "student" && (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="target" className="text-sm font-medium">Target</Label>
@@ -613,7 +658,10 @@ export default function Auth() {
                           )}
                         </div>
                       </>
-                    ) : (
+                    )}
+
+                    {/* Alumni-specific fields */}
+                    {role === "alumni" && (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="companyName" className="text-sm font-medium">Company name</Label>
@@ -661,6 +709,44 @@ export default function Auth() {
                           />
                           {errors.collegeName && (
                             <p className="text-sm text-destructive">{errors.collegeName}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Recruiter-specific fields */}
+                    {role === "recruiter" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="companyName" className="text-sm font-medium">Company name</Label>
+                          <Input
+                            id="companyName"
+                            value={companyName}
+                            onChange={(e) => {
+                              setCompanyName(e.target.value);
+                              setErrors((prev) => ({ ...prev, companyName: undefined }));
+                            }}
+                            placeholder="e.g. Google, Infosys"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.companyName && (
+                            <p className="text-sm text-destructive">{errors.companyName}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="position" className="text-sm font-medium">Role / Title</Label>
+                          <Input
+                            id="position"
+                            value={position}
+                            onChange={(e) => {
+                              setPosition(e.target.value);
+                              setErrors((prev) => ({ ...prev, position: undefined }));
+                            }}
+                            placeholder="Technical Recruiter, HR Manager"
+                            className="rounded-xl h-11 border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
+                          />
+                          {errors.position && (
+                            <p className="text-sm text-destructive">{errors.position}</p>
                           )}
                         </div>
                       </>

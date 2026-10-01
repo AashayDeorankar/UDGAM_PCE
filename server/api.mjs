@@ -55,6 +55,21 @@ const { setupSocketServer } = await import("./socket.mjs");
 const { getAdminAuth, extractBearerToken } = await import("./firebase-admin.mjs");
 const { handleWelcomeEmail } = await import("./welcome-email.mjs");
 const { handlePersonalAnalysis } = await import("./personal-analysis.mjs");
+const { handleAnalyzeJD, handleAnalyzeResumes, handleShortlist, handleInterviewPlan } = await import("./recruiter.mjs");
+const {
+  handleCreateJob,
+  handleListJobs,
+  handleGetJob,
+  handleApply,
+  handleGetApplicants,
+  handleAnalyzeApplications,
+  handleGetShortlist,
+  handleGenerateShortlist,
+  handleGetCandidateAnalysis,
+  handleGetRecruiterJobs,
+  handleGetStudentApplications,
+  handleApplicationDecision,
+} = await import("./jobs.mjs");
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -458,6 +473,86 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: String(err?.message || err) }));
     }
     return;
+  }
+
+  // ── Recruiter AI pipeline (legacy analysis tool) ─────────────────────────────
+  if (req.method === "POST" && pathname === "/api/recruiter/analyze-jd") {
+    return handleAnalyzeJD(req, res);
+  }
+  if (req.method === "POST" && pathname === "/api/recruiter/analyze-resumes") {
+    return handleAnalyzeResumes(req, res);
+  }
+  if (req.method === "POST" && pathname === "/api/recruiter/shortlist") {
+    return handleShortlist(req, res);
+  }
+  if (req.method === "POST" && pathname === "/api/recruiter/interview-plan") {
+    return handleInterviewPlan(req, res);
+  }
+
+  // ── PS-11 Jobs & Applications ────────────────────────────────────────────────
+
+  // POST /api/jobs/create
+  if (req.method === "POST" && pathname === "/api/jobs/create") {
+    return handleCreateJob(req, res);
+  }
+
+  // GET /api/jobs — list open jobs
+  if (req.method === "GET" && pathname === "/api/jobs") {
+    return handleListJobs(req, res);
+  }
+
+  // GET /api/jobs/recruiter/:uid — recruiter's jobs
+  if (req.method === "GET" && pathname.startsWith("/api/jobs/recruiter/")) {
+    const uid = pathname.replace("/api/jobs/recruiter/", "");
+    return handleGetRecruiterJobs(req, res, uid);
+  }
+
+  // GET /api/jobs/student/:uid/applications — student's applications
+  if (req.method === "GET" && pathname.startsWith("/api/jobs/student/") && pathname.endsWith("/applications")) {
+    const uid = pathname.replace("/api/jobs/student/", "").replace("/applications", "");
+    return handleGetStudentApplications(req, res, uid);
+  }
+
+  // Routes that need jobId
+  const jobMatch = pathname.match(/^\/api\/jobs\/([^/]+)(\/.*)?$/);
+  if (jobMatch) {
+    const jobId = jobMatch[1];
+    const sub = jobMatch[2] || "";
+
+    // GET /api/jobs/:id
+    if (req.method === "GET" && sub === "") {
+      return handleGetJob(req, res, jobId);
+    }
+    // POST /api/jobs/:id/apply
+    if (req.method === "POST" && sub === "/apply") {
+      return handleApply(req, res, jobId);
+    }
+    // GET /api/jobs/:id/applicants
+    if (req.method === "GET" && sub === "/applicants") {
+      return handleGetApplicants(req, res, jobId);
+    }
+    // POST /api/jobs/:id/analyze
+    if (req.method === "POST" && sub === "/analyze") {
+      return handleAnalyzeApplications(req, res, jobId);
+    }
+    // GET /api/jobs/:id/shortlist
+    if (req.method === "GET" && sub === "/shortlist") {
+      return handleGetShortlist(req, res, jobId);
+    }
+    // POST /api/jobs/:id/shortlist
+    if (req.method === "POST" && sub === "/shortlist") {
+      return handleGenerateShortlist(req, res, jobId);
+    }
+    // GET /api/jobs/:id/analysis/:appId
+    const analysisMatch = sub.match(/^\/analysis\/([^/]+)$/);
+    if (req.method === "GET" && analysisMatch) {
+      return handleGetCandidateAnalysis(req, res, analysisMatch[1]);
+    }
+    // POST /api/jobs/:id/applications/:appId/decision
+    const decisionMatch = sub.match(/^\/applications\/([^/]+)\/decision$/);
+    if (req.method === "POST" && decisionMatch) {
+      return handleApplicationDecision(req, res, jobId, decisionMatch[1]);
+    }
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });

@@ -15,8 +15,14 @@ function ScrollToTopWhenReady() {
  * Renders children only when user is logged in.
  * Otherwise redirects to /auth with ?redirect=<current path> so user returns here after login.
  */
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+export function ProtectedRoute({
+  children,
+  role: requiredRole,
+}: {
+  children: React.ReactNode;
+  role?: "student" | "alumni" | "recruiter";
+}) {
+  const { user, loading, role } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -30,6 +36,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     const redirect = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/auth?redirect=${redirect}`} replace state={{ from: location }} />;
+  }
+
+  if (requiredRole && role && role !== requiredRole) {
+    if (requiredRole === "recruiter") {
+      return <Navigate to="/jobs" replace />;
+    }
+    return <Navigate to="/" replace />;
   }
 
   return (
