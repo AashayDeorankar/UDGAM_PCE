@@ -42,15 +42,23 @@ export default function JobDetail() {
   const [applied, setApplied] = useState(false);
 
   useEffect(() => {
-    if (user?.displayName && !candidateName) setCandidateName(user.displayName);
-    if (user?.email && !candidateEmail) setCandidateEmail(user.email);
+    setCandidateName(user?.displayName || "");
+    setCandidateEmail(user?.email || "");
   }, [user]);
 
-  // Check if already applied
+  // Check if current candidate already applied
   useEffect(() => {
-    const alreadyApplied = applications.some((a) => (a as { jobId?: string }).jobId === jobId);
-    if (alreadyApplied) setApplied(true);
-  }, [applications, jobId]);
+    const userEmail = (user?.email || "").toLowerCase().trim();
+    const userUid = user?.uid;
+    const alreadyApplied = applications.some((a) => {
+      const app = a as { jobId?: string; studentEmail?: string; applicantUid?: string; studentId?: string };
+      if (app.jobId !== jobId) return false;
+      if (userEmail && app.studentEmail?.toLowerCase().trim() === userEmail) return true;
+      if (userUid && (app.applicantUid === userUid || app.studentId === userUid)) return true;
+      return false;
+    });
+    setApplied(alreadyApplied);
+  }, [applications, jobId, user]);
 
   // Fetch job details
   const loadJob = useCallback(async () => {

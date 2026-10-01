@@ -144,6 +144,7 @@ export function Navbar() {
   const handleSignOut = async () => {
     await signOut();
     setIsOpen(false);
+    navigate("/auth");
   };
 
   const handleNavClick = (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {

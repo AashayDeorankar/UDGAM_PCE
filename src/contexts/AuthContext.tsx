@@ -52,11 +52,64 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function createDemoUser(email?: string, name?: string, role: UserRole = "student"): User {
-  const chosenEmail = email || (role === "alumni" ? "alumni@techprep.edu" : role === "recruiter" ? "recruiter@techprep.edu" : "student@techprep.edu");
-  const chosenName = name || (role === "alumni" ? "Demo Alumni" : role === "recruiter" ? "Sarah (Recruiter)" : "Demo Student");
-  return {
-    uid: "demo-" + role,
+function formatNameFromEmail(email: string): string {
+  const local = email.split("@")[0] || "User";
+  return local
+    .split(/[._+-]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function generateUserUid(email: string, role: UserRole): string {
+  const clean = email.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+  return `user_${role}_${clean}`;
+}
+
+const ACCOUNTS_STORAGE_KEY = "techprep.accounts";
+const CURRENT_USER_KEY = "techprep.currentUser";
+const LEGACY_DEMO_KEY = "techprep.demoUser";
+
+interface StoredAccount {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  profile?: Record<string, string>;
+}
+
+function getStoredAccounts(): Record<string, StoredAccount> {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredAccount(account: StoredAccount) {
+  try {
+    const accounts = getStoredAccounts();
+    accounts[account.email.toLowerCase().trim()] = account;
+    window.localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  } catch {
+    // ignore
+  }
+}
+
+function createDemoUser(email?: string, name?: string, role: UserRole = "student", profile?: Record<string, string>): User {
+  const rawEmail = (email || "").trim();
+  const defaultEmail = role === "alumni" ? "alumni@techprep.edu" : role === "recruiter" ? "recruiter@techprep.edu" : "student@techprep.edu";
+  const chosenEmail = rawEmail || defaultEmail;
+
+  const accounts = getStoredAccounts();
+  const existing = accounts[chosenEmail.toLowerCase()];
+
+  const chosenName = name?.trim() || existing?.displayName || profile?.fullName || profile?.name || formatNameFromEmail(chosenEmail);
+  const uid = existing?.uid || generateUserUid(chosenEmail, role);
+
+  const userObj = {
+    uid,
     email: chosenEmail,
     displayName: chosenName,
     photoURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
@@ -64,16 +117,26 @@ function createDemoUser(email?: string, name?: string, role: UserRole = "student
     isAnonymous: false,
     metadata: {},
     providerData: [],
-    refreshToken: "demo-token",
+    refreshToken: `token-${uid}`,
     tenantId: null,
     delete: async () => {},
-    getIdToken: async () => "demo-token",
+    getIdToken: async () => `demo-token:${uid}:${role}`,
     getIdTokenResult: async () => ({} as any),
     reload: async () => {},
     toJSON: () => ({}),
     phoneNumber: null,
     providerId: "demo",
   } as unknown as User;
+
+  saveStoredAccount({
+    uid,
+    email: chosenEmail,
+    displayName: chosenName,
+    role,
+    profile,
+  });
+
+  return userObj;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -235,25 +298,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
-      const stored = window.localStorage.getItem("techprep.demoUser");
+      const stored = window.localStorage.getItem(CURRENT_USER_KEY) || window.localStorage.getItem(LEGACY_DEMO_KEY);
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          setUser(parsed.user);
-          setRole(parsed.role || "student");
+          if (parsed && parsed.user && parsed.user.email) {
+            const accounts = getStoredAccounts();
+            const existing = accounts[parsed.user.email.toLowerCase().trim()];
+            const rehydrated = createDemoUser(
+              parsed.user.email,
+              parsed.user.displayName || existing?.displayName,
+              parsed.role || existing?.role || "student",
+              parsed.profile || existing?.profile
+            );
+            setUser(rehydrated);
+            setRole(parsed.role || existing?.role || "student");
+          } else {
+            setUser(null);
+            setRole(null);
+          }
         } catch {
-          const defaultUser = createDemoUser();
-          setUser(defaultUser);
-          setRole("student");
+          setUser(null);
+          setRole(null);
         }
       } else {
-        const defaultUser = createDemoUser();
-        setUser(defaultUser);
-        setRole("student");
-        window.localStorage.setItem(
-          "techprep.demoUser",
-          JSON.stringify({ user: defaultUser, role: "student" }),
-        );
+        setUser(null);
+        setRole(null);
       }
       setLoading(false);
       return;
@@ -334,13 +404,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile?: Record<string, string>
   ) => {
     if (!isFirebaseConfigured || !auth) {
-      const newUser = createDemoUser(email, profile?.fullName, preferredRole);
+      const newUser = createDemoUser(email, profile?.fullName || profile?.name, preferredRole, profile);
       setUser(newUser);
       setRole(preferredRole);
-      window.localStorage.setItem(
-        "techprep.demoUser",
-        JSON.stringify({ user: newUser, role: preferredRole, profile }),
-      );
+      const session = JSON.stringify({ user: newUser, role: preferredRole, profile });
+      window.localStorage.setItem(CURRENT_USER_KEY, session);
+      window.localStorage.setItem(LEGACY_DEMO_KEY, session);
       return { error: null };
     }
     try {
@@ -355,13 +424,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string, preferredRole?: UserRole) => {
     if (!isFirebaseConfigured || !auth) {
       const r = preferredRole || "student";
-      const loggedUser = createDemoUser(email, undefined, r);
-      setUser(loggedUser);
-      setRole(r);
-      window.localStorage.setItem(
-        "techprep.demoUser",
-        JSON.stringify({ user: loggedUser, role: r }),
+      const accounts = getStoredAccounts();
+      const existing = accounts[email.toLowerCase().trim()];
+      const loggedUser = createDemoUser(
+        email,
+        existing?.displayName,
+        existing?.role || r,
+        existing?.profile
       );
+      setUser(loggedUser);
+      setRole(existing?.role || r);
+      const session = JSON.stringify({
+        user: loggedUser,
+        role: existing?.role || r,
+        profile: existing?.profile,
+      });
+      window.localStorage.setItem(CURRENT_USER_KEY, session);
+      window.localStorage.setItem(LEGACY_DEMO_KEY, session);
       return { error: null };
     }
     try {
@@ -394,13 +473,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     if (!isFirebaseConfigured || !auth) {
       const r = preferredRole || "student";
-      const gUser = createDemoUser("google.user@techprep.edu", "Google Demo Student", r);
+      const gUser = createDemoUser("google.user@techprep.edu", "Google Demo Student", r, profile);
       setUser(gUser);
       setRole(r);
-      window.localStorage.setItem(
-        "techprep.demoUser",
-        JSON.stringify({ user: gUser, role: r, profile }),
-      );
+      const session = JSON.stringify({ user: gUser, role: r, profile });
+      window.localStorage.setItem(CURRENT_USER_KEY, session);
+      window.localStorage.setItem(LEGACY_DEMO_KEY, session);
       return { error: null };
     }
     try {
@@ -431,7 +509,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (!isFirebaseConfigured || !auth) {
-      window.localStorage.removeItem("techprep.demoUser");
+      window.localStorage.removeItem(CURRENT_USER_KEY);
+      window.localStorage.removeItem(LEGACY_DEMO_KEY);
       setUser(null);
       setRole(null);
       return;

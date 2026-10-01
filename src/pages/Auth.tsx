@@ -65,7 +65,7 @@ export default function Auth() {
     position?: string;
   }>({});
 
-  const { signIn, signUp, signInWithGoogle, user, loading, redirectError, clearRedirectError } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signOut, user, loading, redirectError, clearRedirectError } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const db = getFirestoreDb();
@@ -119,26 +119,16 @@ export default function Auth() {
     }
   };
 
-  // When user is logged in: redirect and retry every 300ms until we leave /auth or /auth/callback
+  // Only auto-redirect if explicitly on the OAuth callback route
   useEffect(() => {
     if (loading || !user) return;
-    if (hasRedirected.current) return;
-    hasRedirected.current = true;
-
-    const url = getRedirectUrl();
-    toast({ title: "Login successful! 🎉", description: "Redirecting you…" });
-    doRedirect();
-
-    const interval = setInterval(() => {
-      if (typeof window !== "undefined" && (window.location.pathname === "/auth" || window.location.pathname === "/auth/callback")) {
-        window.location.href = url;
-      } else {
-        clearInterval(interval);
-      }
-    }, 300);
-
-    return () => clearInterval(interval);
-  }, [user, loading, redirectTo, role]);
+    if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
+      if (hasRedirected.current) return;
+      hasRedirected.current = true;
+      const url = getRedirectUrl();
+      doRedirect();
+    }
+  }, [user, loading]);
 
   const validateForm = () => {
     const newErrors: {
@@ -453,6 +443,47 @@ export default function Auth() {
             variants={item}
             className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-6 sm:p-8 shadow-xl shadow-foreground/5"
           >
+            {user && (
+              <div className="mb-6 p-3.5 rounded-xl border border-primary/30 bg-primary/10 text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground">Logged in account:</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase font-bold">
+                    {role || "candidate"}
+                  </span>
+                </div>
+                <p className="text-foreground/90 font-medium truncate">
+                  {user.displayName || user.email} <span className="text-muted-foreground font-normal">({user.email})</span>
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      await signOut();
+                      toast({ title: "Signed out", description: "You can now enter another candidate email." });
+                    }}
+                    className="flex-1 h-8 text-xs rounded-lg border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                  >
+                    Switch Account / Sign Out
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const target = (role === "student" && redirectTo?.startsWith("/recruiter"))
+                        ? "/jobs"
+                        : (redirectTo && !redirectTo.startsWith("/recruiter") ? redirectTo : (role === "recruiter" ? "/recruiter" : "/"));
+                      navigate(target);
+                    }}
+                    className="flex-1 h-8 text-xs rounded-lg"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="text-center mb-6">
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground tracking-tight mb-2">
                 {isLogin ? "Welcome back" : "Join TechPrep"}
